@@ -15,7 +15,8 @@ To install, use the standard
 ** Examples / Help **
 For help and examples, start with the *examples/* path within the project.
 
-1_coordinates.py
+**1_coordinates.py**
+
     contains some examples of how to create and use the coordinate 
     system tools such as:
     
@@ -23,7 +24,8 @@ For help and examples, start with the *examples/* path within the project.
     * (TODO) Demonstrate using coordinate systems
     * (TODO) Demonstrate transforming between coordinate systems
 
-2_astrodatetime.py
+**2_astrodatetime.py**
+
     demonstrates how to use the Python datetime.datetime() subclass
     called astrodatetime() to handle JD/MJD and Sidereal Time.
     
