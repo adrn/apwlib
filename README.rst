@@ -17,13 +17,13 @@ For help and examples, see the examples/ path within the project.
 1_coordinates.py
     contains some examples of how to create and use the coordinate 
     system tools such as:
-        - Test1
-        - Test2
+        * Test1
+        * Test2
 
 2_astrodatetime.py
     demonstrates how to use the Python datetime.datetime() subclass
     called astrodatetime() to handle JD/MJD and Sidereal Time.
-        - Test1
-        - Test2
+        * Test1
+        * Test2
 
 Any questions can be directed to me via email at **adrn at astro.columbia.edu**
