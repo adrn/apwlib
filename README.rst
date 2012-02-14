@@ -15,19 +15,19 @@ To install, use the standard
 ** Examples / Help **
 For help and examples, start with the *examples/* path within the project.
 
-**1_coordinates.py**
+**examples/1_coordinates.py**
 
-    contains some examples of how to create and use the coordinate 
+    Contains some examples of how to create and use the coordinate 
     system tools such as:
     
     * Creating RA/Dec objects from any reasonable units or formatting (e.g. "04:13:25.1412" or 136.2352)
     * (TODO) Demonstrate using coordinate systems
     * (TODO) Demonstrate transforming between coordinate systems
 
-**2_astrodatetime.py**
+**examples/2_astrodatetime.py**
 
-    demonstrates how to use the Python datetime.datetime() subclass
-    called astrodatetime() to handle JD/MJD and Sidereal Time.
+    Demonstrates how to use the Python datetime.datetime() subclass
+    called *astrodatetime()* to handle JD/MJD and Sidereal Time.
     
     * Using *astrodatetime* to create a Python datetime object that knows about astronomical date formats
     * Creating an *astrodatetime()* object with a JD, MJD, or Local Sidereal Time (LST)

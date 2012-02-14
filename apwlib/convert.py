@@ -68,15 +68,15 @@ def intTimezoneToTzinfo(timezone):
 # HOURS (time or angle)
 def _checkHourRange(hrs):
     if not -24 < hrs < 24:
-        raise IllegalHourError("Error: RA hours not in range (-24,24) ({0}).".format(hrs))
+        raise IllegalHourError("Error: hours not in range (-24,24) ({0}).".format(hrs))
 
 def _checkMinuteRange(min):
     if not 0 <= min < 60:
-        raise IllegalMinuteError("Error: RA minutes not in range [0,60) ({0}).".format(min))
+        raise IllegalMinuteError("Error: minutes not in range [0,60) ({0}).".format(min))
 
 def _checkSecondRange(sec):
     if not 0 <= sec < 60:
-        raise IllegalSecondError("Error: RA seconds not in range [0,60) ({0}).".format(sec))
+        raise IllegalSecondError("Error: seconds not in range [0,60) ({0}).".format(sec))
 
 def checkHMSRanges(h, m, s):
     _checkHourRange(h)
@@ -109,12 +109,15 @@ def parseHours(hours, outputHMS=False):
         # x is now a float value (format [2])
 
         if outputHMS:
-            (hf, h) = math.modf(x) # (hour fraction, hour)
+            # determine sign
+            sign = math.copysign(1.0, x)
+            
+            (hf, h) = math.modf(abs(x)) # (degree fraction, degree)
             (mf, m) = math.modf(hf * 60.) # (minute fraction, minute)
             s = mf * 60.
-    
+            
             checkHMSRanges(h,m,s) # throws exception if out of range
-            return (int(h), int(m), s)
+            return (sign*int(h), int(m), s)
 
         else:
             return x
@@ -141,7 +144,10 @@ def parseHours(hours, outputHMS=False):
             (hf, h) = math.modf(x.hours) # (hour fraction, hour)
             (mf, m) = math.modf(hf * 60.) # (minute fraction, minute)
             s = mf * 60.
-    
+            
+            m = abs(m)
+            s = abs(s)
+            
             checkHMSRanges(h,m,s) # throws exception if out of range
             return (int(h), int(m), s)
 
@@ -242,12 +248,15 @@ def parseDegrees(degrees, outputDMS=False):
         # x is now a float value (format [2])
 
         if outputDMS:
-            (df, d) = math.modf(x) # (degree fraction, degree)
+            # determine sign
+            sign = math.copysign(1.0, x)
+            
+            (df, d) = math.modf(abs(x)) # (degree fraction, degree)
             (mf, m) = math.modf(df * 60.) # (minute fraction, minute)
             s = mf * 60.
     
             #checkHMSRanges(h,m,s) # [APW: don't know how to handle this for Degrees]
-            return (int(d), int(m), s)
+            return (sign * int(d), int(m), s)
 
         else:
             return x

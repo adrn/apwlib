@@ -60,14 +60,14 @@ print "Angle as HMS: {0}".format(angle.string(units="hours", sep=("h","m","s"), 
 print "Angle as HMS: {0}".format(angle.string(units="hours", sep=["h","m","s"], precision=4))
 print "Angle as HMS: {0}".format(angle.string(units="hours", sep="hms", precision=4))
 
-# +++++++++++++++++++++++++
-# |     RA() objects      |
-# +++++++++++++++++++++++++
+# +++++++++++++++++++++++++++++++
+# |     RA()/Dec() objects      |
+# +++++++++++++++++++++++++++++++
 #   The RA() objects represents a Right Ascension in an equatorial coordinate system. 
 #   RA is a subclass of Angle, so any of the above examples apply. Here we will focus 
 #   on the extra functionality implemented in the RA class.
 
-# | Creating RA objects |
+# | Creating RA/Dec objects |0
 # -----------------------
 
 # Creating RA objects is basically identical to creating Angle objects. The only difference
@@ -77,3 +77,11 @@ ra = RA("4:08:15.162342")
 # is equivalent to:
 ra = RA("4:08:15.162342", units="hours")
 ra = RA.fromHours("4:08:15.162342")
+
+# Creating Dec objects is basically identical to creating Angle objects. The only difference
+#   is if no units are specified, it assumes degrees.
+
+dec = Dec("-41:08:15.162342")
+# is equivalent to:
+dec = Dec("-41:08:15.162342", units="degrees")
+dec = Dec.fromDegrees("-41:08:15.162342")
