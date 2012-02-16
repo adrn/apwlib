@@ -138,7 +138,7 @@ class Angle(object):
         """ Returns the angle's value in degrees (read-only property). """
         return math.degrees(self.radians) # converts radians to degrees
 
-    def string(self, units="hours", decimal=False, sep=" ", precision=5, pad=False): 
+    def string(self, units="degrees", decimal=False, sep=" ", precision=5, pad=False): 
         """ \brief Returns a string representation of the angle.
         
         Parameters
@@ -406,6 +406,61 @@ class Dec(Angle):
         
         self.setBounds(0., 2.*math.pi)
 
+class RADec(object):
+    """ Represents a J200 Equatorial coordinate system. """
+    
+    def __init__(self, radec, ra_units="hours", dec_units="degrees"):
+        """ """
+        if isinstance(radec, tuple):
+            if isinstance(radec[0], RA):
+                self.ra = radec[0]
+            else:
+                self.ra = RA(radec[0], ra_units)
+            
+            if isinstance(radec[1], Dec):
+                self.dec = radec[1]
+            else:
+                self.dec = Dec(radec[1], dec_units)
+        elif isinstance(radec, str):
+            ra, dec = convert.parseRADec(radec)
+            self.ra = ra
+            self.dec = dec
+        else:
+            raise ValueError("RADec(): Invalid format! Must initilalize with a tuple (ra,dec) or a string.")
+    
+    def __repr__(self):
+        """ """
+        return "<RA: {0} | Dec: {1}>".format(self.ra.string(sep=":"), self.dec.string(sep=":", units="degrees"))
+    
+    def __str__(self):
+        """ """
+        return "<{0}, {1}>".format(self.ra.degrees, self.dec.degrees)
+    
+    def subtends(self, other):
+        """ Calculate the angle subtended by 2 coordinates on a sphere
+    
+        Parameters
+        ----------
+        other : EquatorialCoordinates
+        
+        Returns
+        -------
+            Angle
+            
+        """
+        if not isinstance(other, RADec):
+            raise ValueError("You must pass another 'EquatorialCoordinate' into this function to calculate the angle subtended.")
+        
+        ang = math.acos(math.sin(self.dec.radians)*math.sin(other.dec.radians) + math.cos(self.dec.radians)*math.cos(other.dec.radians)*math.cos(self.ra.radians - other.ra.radians))
+        
+        angle = Angle.fromRadians(ang)
+        return angle
+    
+    def convertTo():
+        pass
+
+
+''' This is all experimental 
 class Coordinate(object):
     """ A generic coordinate system class. Support n > 0 dimensions. This class is an 'abtract' class,
         and should really only be used in the below subclasses.
@@ -424,79 +479,12 @@ class SphericalCoordinate(Coordinate):
 class CartesianCoordinate(Coordinate):
     pass
 
-class EquatorialCoordinate(SphericalCoordinate):
-    """ Represents an RA, Dec coordinate system. """
-    
-    def __init__(self, ra, dec):
-        """ A few notes: 
-            - if the ra/dec specified are not geometry.Angle() objects, they are 
-                assumed to be in units degrees, and converted to Angle() objects.
-        
-        """
-        
-        if not isinstance(ra, RA):
-            self.ra = Angle.fromDegrees(ra)
-        else:
-            self.ra = ra
-
-        if not isinstance(ra, RA):
-            # If dec is not an RA object
-            if isinstance(ra, Angle):
-                # If it is an Angle object, preserve units
-                self.ra = RA.fromDegrees(ra.degrees)
-            else:
-                # Otherwise, assume units = degrees
-                self.ra = RA.fromDegrees(ra)
-        else:
-            self.ra = ra
-
-        if not isinstance(dec, Dec):
-            # If dec is not a Dec object
-            if isinstance(dec, Angle):
-                # If it is an Angle object, preserve units
-                self.dec = Dec.fromDegrees(dec.degrees)
-            else:
-                # Otherwise, assume units = degrees
-                self.dec = Dec.fromDegrees(dec)
-        else:
-            self.dec = dec
-    
-    def subtends(self, other):
-        """ Calculate the angle subtended by 2 coordinates on a sphere
-    
-        Parameters
-        ----------
-        other : EquatorialCoordinates
-        
-        Returns
-        -------
-            Angle
-            
-        """
-        if not isinstance(other, EquatorialCoordinates):
-            raise ValueError("You must pass another 'EquatorialCoordinates' into this function to calculate the angle subtended.")
-        
-        x1 = cos(self.ra.radians)*cos(self.dec.radians)
-        y1 = sin(self.ra.radians)*cos(self.dec.radians)
-        z1 = sin(self.dec.radians)
-        
-        x2 = cos(other.ra.radians)*cos(other.dec.radians)
-        y2 = sin(other.ra.radians)*cos(other.dec.radians)
-        z2 = sin(other.dec.radians)
-        
-        angle = Angle.fromRadians(acos(x1*x2 + y1*y2 + z1*z2))
-        angle.units = 'degrees'
-        return angle
-    
-    def convertTo():
-        pass
-
 class GalacticSphericalCoordinate(SphericalCoordinate):
     pass
 
 class GalacticCartesianCoordinate(CartesianCoordinate):
     pass
-
+'''
 
 # Standalone functions
 def subtends(a1,b1,a2,b2,units="radians"):

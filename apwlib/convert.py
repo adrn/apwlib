@@ -106,70 +106,51 @@ def parseHours(hours, outputHMS=False):
     x = hours
 
     if isinstance(x, float):
-        # x is now a float value (format [2])
-
-        if outputHMS:
-            # determine sign
-            sign = math.copysign(1.0, x)
-            
-            (hf, h) = math.modf(abs(x)) # (degree fraction, degree)
-            (mf, m) = math.modf(hf * 60.) # (minute fraction, minute)
-            s = mf * 60.
-            
-            checkHMSRanges(h,m,s) # throws exception if out of range
-            return (sign*int(h), int(m), s)
-
-        else:
-            return x
+        parsedHours = x
+        parsedHMS = hoursToHMS(parsedHours)
     
     elif isinstance(x, str):
         x = x.strip()
-        div = '[:|\s|/|\t]{1,}' # accept these as (one or more repeated) delimiters: :, whitespace, /
-        pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)$'
+        
         try:
-            elems = re.search(pattr, x).groups()
-        except:
-            raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(args[0]))
+            parsedHours = float(x)
+            parsedHMS = hoursToHMS(parsedHours)
+        except ValueError:
         
-        (h, m, s) = (int(elems[0]), int(elems[1]), float(elems[2]))
-        checkHMSRanges(h,m,s)
+            div = '[:|/|\t|\-|\shms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+            pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
 
-        if outputHMS:
-            return (h, m, s)
-        else:
-            return hmsToHours(h, m, s)
-    
+            try:
+                elems = re.search(pattr, x).groups()
+            except:
+                raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(x))
+            
+            parsedHours = hmsToHours(elems[0], elems[1], elems[2])
+            parsedHMS = (int(elems[0]), int(elems[1]), float(elems[2]))
+
     elif isinstance(x, g.Angle):
-        if outputHMS:
-            (hf, h) = math.modf(x.hours) # (hour fraction, hour)
-            (mf, m) = math.modf(hf * 60.) # (minute fraction, minute)
-            s = mf * 60.
-            
-            m = abs(m)
-            s = abs(s)
-            
-            checkHMSRanges(h,m,s) # throws exception if out of range
-            return (int(h), int(m), s)
-
-        else:
-            return x.hours
-    
-    elif isinstance(x, py_datetime.datetime):
-        h = x.hour
-        m = x.minute
-        s = float(x.second) + x.microsecond/1.E6
-        
-        if outputHMS:
-            return (h, m, s)
-        else:
-            return hmsToHours(h, m, s)
+        parsedHours = x.hours
+        parsedHMS = hoursToHMS(parsedHours)
     
     else:
         raise ValueError("convert.parseHours: could not parse value of type {0}.".format(type(x.__name__)))
     
+    if outputHMS:
+        return parsedHMS
+    else:
+        return parsedHours
+    
 def hoursToHMS(h):
     """ Convert any parseable hour value (see: parseHours) into an hour,minute,second tuple """
-    return parseHours(h, outputHMS=True)
+    sign = math.copysign(1.0, h)
+        
+    (hf, h) = math.modf(abs(h)) # (degree fraction, degree)
+    (mf, m) = math.modf(hf * 60.) # (minute fraction, minute)
+    s = mf * 60.
+    
+    checkHMSRanges(h,m,s) # throws exception if out of range
+    
+    return (int(sign*h), int(m), s)
 
 def hoursToDecimal(h):
     """ Convert any parseable hour value (see: parseHours) into a float value """
@@ -245,68 +226,53 @@ def parseDegrees(degrees, outputDMS=False):
     x = degrees
     
     if isinstance(x, float):
-        # x is now a float value (format [2])
-
-        if outputDMS:
-            # determine sign
-            sign = math.copysign(1.0, x)
-            
-            (df, d) = math.modf(abs(x)) # (degree fraction, degree)
-            (mf, m) = math.modf(df * 60.) # (minute fraction, minute)
-            s = mf * 60.
-    
-            #checkHMSRanges(h,m,s) # [APW: don't know how to handle this for Degrees]
-            return (sign * int(d), int(m), s)
-
-        else:
-            return x
+        parsedDegrees = x
+        parsedDMS = degreesToDMS(parsedDegrees)
     
     elif isinstance(x, str):
         x = x.strip()
-
+        
         try:
-            d = float(x)
-            (d, m, s) = degreesToDMS(d)
+            parsedDegrees = float(x)
+            parsedDMS = degreesToDMS(parsedDegrees)
         except ValueError:
-
-            div = '[:|\s|/]{1,}' # accept these as (one or more repeated) delimiters: :, whitespace, /
-            pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)$'
+            div = '[:|/|\t|\-|\sdms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+            pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
     
             try:
                 elems = re.search(pattr, x).groups()
             except:
                 raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
-    
-            (d, m, s) = (int(elems[0]), int(elems[1]), float(elems[2]))
-                    
-        _checkMinuteRange(m)
-        _checkSecondRange(s)
-
-        if outputDMS:
-            return (d, m, s)
-        else:
-            return dmsToDegrees(d, m, s)
+            
+            parsedDMS = (int(elems[0]), int(elems[1]), float(elems[2]))
+            parsedDegrees = dmsToDegrees(int(elems[0]), int(elems[1]), float(elems[2]))
     
     elif isinstance(x, g.Angle):
-        if outputDMS:
-            (df, d) = math.modf(x.degrees) # (degree fraction, hour)
-            (mf, m) = math.modf(hf * 60.) # (minute fraction, minute)
-            s = mf * 60.
-    
-            #checkHMSRanges(h,m,s) # throws exception if out of range
-            return (int(d), int(m), s)
-
-        else:
-            return x.degrees
-    
+        parsedDegrees = x.degrees
+        parsedDMS = degreesToDMS(parsedDegrees)
     else:
         raise ValueError("convert.parseDegrees: could not parse value of type {0}.".format(type(x.__name__)))
+    
+    if outputDMS:
+        return parsedDMS
+    else:
+        return parsedDegrees
+
 
 def degreesToDMS(d):
     """ Convert any parseable degree value (see: parseDegrees) into a 
         degree,arcminute,arcsecond tuple 
-    """
-    return parseDegrees(d, outputDMS=True)
+    """    
+    sign = math.copysign(1.0, d)
+        
+    (df, d) = math.modf(abs(d)) # (degree fraction, degree)
+    (mf, m) = math.modf(df * 60.) # (minute fraction, minute)
+    s = mf * 60.
+    
+    _checkMinuteRange(m)
+    _checkSecondRange(s)
+
+    return (int(sign * d), int(m), s)
 
 def degreesToDecimal(d):
     """ Convert any parseable degrees value (see: parseDegrees) into a float value """
@@ -314,7 +280,7 @@ def degreesToDecimal(d):
 
 def dmsToDegrees(d, m, s):
     """ Convert degrees, arcminute, arcsecond to a float degrees value. """
-    
+
     # determine sign
     sign = math.copysign(1.0, d)
 
@@ -406,6 +372,27 @@ def radiansToDMS(r):
     """ Convert an angle in Radians to an degree,arcminute,arcsecond tuple """
     degrees = math.degrees(r)
     return degreesToDMS(degrees)  
+
+# Combinations
+def parseRADec(radec, ra_units="hours", dec_units="degrees"):
+    """ """
+    
+    div = '[:|/|\t|\-|\sdms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+    ra_pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div
+    dec_pattr = '([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
+    pattr = ra_pattr + "[\s|_]+" + dec_pattr
+    
+    try:
+        elems = re.search(pattr, radec).groups()
+    except:
+        raise ValueError("convert.parseRADec: Invalid input string! ('{0}')".format(radec))
+    
+    print elems
+    
+    ra = g.RA(hmsToHours(*map(float,elems[:3])), units=ra_units)
+    dec = g.Dec(dmsToDegrees(*map(float,elems[3:])), units=dec_units)
+    
+    return g.RADec((ra,dec))
     
 # Time Conversions:
 def datetimeToDecimalTime(datetimeObj=None):
@@ -742,9 +729,9 @@ def gmstToDatetime(datetimeObj, timezone=None):
 
 
 
-# STOPPED HERE
-
-
+# =====================================
+# ANYTHING BELOW HERE CAN'T BE TRUSTED!
+# =====================================
 
 
 def gmstToLST(gmst, longitude, gmstUnits="hours", longitudeDirection="w", longitudeUnits="degrees", outputHMS=False):
@@ -1279,7 +1266,7 @@ if __name__ == '__main__':
     import sys
     
     class TestParseFunctions(unittest.TestCase):
-        def test_parseRA(self):
+        def test_parseHours(self):
             # "11:30:36.135789" = 11.010037719166666
             self.assertAlmostEqual(parseHours("11:30:36.135789"), 11.5100377191666, 12)
             self.assertAlmostEqual(parseHours(11.5100377191666), 11.5100377191666, 12)
@@ -1289,10 +1276,81 @@ if __name__ == '__main__':
             self.assertEqual(m, 30)
             self.assertAlmostEqual(s, 36.135789, 12)
             
-            parseHours(11.5100377191666, outputHMS=True)
+            h,m,s = parseHours(11.5100377191666, outputHMS=True)
             self.assertEqual(h, 11)
             self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            h,m,s = parseHours("11 30 36.135789", outputHMS=True)
+            self.assertEqual(h, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            h,m,s = parseHours("113036.135789", outputHMS=True)
+            self.assertEqual(h, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            h,m,s = parseHours("11 30 36.135789", outputHMS=True)
+            self.assertEqual(h, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            h,m,s = parseHours("11h 30m 36.135789s", outputHMS=True)
+            self.assertEqual(h, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            h,m,s = parseHours("11h30m36.135789s", outputHMS=True)
+            self.assertEqual(h, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            h,m,s = parseHours("11-30-36.135789", outputHMS=True)
+            self.assertEqual(h, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+        def test_parseDegrees(self):
+            d,m,s = parseDegrees("11:30:36.135789", outputDMS=True)
+            self.assertEqual(d, 11)
+            self.assertEqual(m, 30)
             self.assertAlmostEqual(s, 36.135789, 12)
+            
+            d,m,s = parseDegrees(11.5100377191666, outputDMS=True)
+            self.assertEqual(d, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            d,m,s = parseDegrees("11 30 36.135789", outputDMS=True)
+            self.assertEqual(d, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            d,m,s = parseDegrees("113036.135789", outputDMS=True)
+            self.assertEqual(d, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            d,m,s = parseDegrees("11 30 36.135789", outputDMS=True)
+            self.assertEqual(d, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            d,m,s = parseDegrees("11d 30m 36.135789s", outputDMS=True)
+            self.assertEqual(d, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            d,m,s = parseDegrees("11d30m36.135789s", outputDMS=True)
+            self.assertEqual(d, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
+            
+            d,m,s = parseDegrees("11-30-36.135789", outputDMS=True)
+            self.assertEqual(d, 11)
+            self.assertEqual(m, 30)
+            self.assertAlmostEqual(s, 36.135789, 5)
     
     unittest.main()
     print "Test ran successfully!"
