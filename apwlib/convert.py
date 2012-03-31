@@ -29,14 +29,12 @@
 TODO: 
     - any function that takes RA and Dec should accept a string of the form HH:MM:SS.SS
     - define __all__ so importing all from this script doesn't carry all of 'math'
-    - doxypy style documentation
     - unit tests for all functions
 """
 
 __author__ = 'Adrian Price-Whelan <adrn@astro.columbia.edu>'
 
 # Standard library dependencies
-#from math import *
 import math
 import re
 import calendar
@@ -85,27 +83,28 @@ def checkHMSRanges(h, m, s):
     return None
     
 def parseHours(hours, outputHMS=False):
-    """
-        \brief Parses an input "hour" value to decimal hours or an hour, minute, second tuple.
+    """ Parses an input "hour" value to decimal hours or an hour, minute, second tuple.
         
         Convert hours given in any parseable format (float, string, or Angle) into 
         hour, minute, and seconds components or decimal hours.
         
-        \param hours (\c float, \c string) If a string, accepts values in these formats:
-            \li HH:MM:SS.sss (string), e.g. 12:52:32.423
-            \li HH.dddd (float, string), e.g. 12.542326
-            \li HH MM SS.sss (string, array), e.g. 12 52 32.423
+        Parameters
+        ----------
+        hours : float, str
+            If a string, accepts values in these formats:
+                * HH:MM:SS.sss (string), e.g. 12:52:32.423
+                * HH.dddd (float, string), e.g. 12.542326
+                * HH MM SS.sss (string, array), e.g. 12 52 32.423
             Whitespace may be spaces and/or tabs.
-        \param outputHMS (\c boolean) If True, returns a tuple of (hour, minute, second)
-    
-        \return hours in decimal form unless the parameter "outputHMS" is True, in which
-            case returns a tuple: (h, m, s).
+        outputHMS : bool
+            If True, returns a tuple of (hour, minute, second)
+
     """
     
     # either a string or a float
     x = hours
 
-    if isinstance(x, float):
+    if isinstance(x, float) or isinstance(x, int):
         parsedHours = x
         parsedHMS = hoursToHMS(parsedHours)
     
@@ -132,8 +131,12 @@ def parseHours(hours, outputHMS=False):
         parsedHours = x.hours
         parsedHMS = hoursToHMS(parsedHours)
     
+    elif isinstance(x, py_datetime.datetime):
+        parsedHours = datetimeToDecimalTime(x)
+        parsedHMS = hoursToHMS(parsedHours)
+    
     else:
-        raise ValueError("convert.parseHours: could not parse value of type {0}.".format(type(x.__name__)))
+        raise ValueError("parseHours: could not parse value of type {0}.".format(type(x.__name__)))
     
     if outputHMS:
         return parsedHMS
@@ -183,7 +186,7 @@ def hoursToRadians(h):
     return math.radians(h*15.)
 
 def hoursToString(h, precision=5, pad=False, sep=("h", "m", "s")):
-    """ \brief Takes a decimal hour value and returns a string formatted as hms with separator
+    """ Takes a decimal hour value and returns a string formatted as hms with separator
         specified by the 'sep' parameter. 
         
         More detailed description here!
@@ -206,26 +209,32 @@ def hoursToString(h, precision=5, pad=False, sep=("h", "m", "s")):
 
 # DEGREES
 def parseDegrees(degrees, outputDMS=False):
-    """ \brief Parses an input "degrees" value into decimal degrees or a 
+    """ Parses an input "degrees" value into decimal degrees or a 
         degree,arcminute,arcsecond tuple.
         
         Convert degrees given in any parseable format (float, string, or Angle) into 
         degrees, arcminutes, and arcseconds components or decimal degrees.
         
-        Accepts values in these formats:
-            \li [+|-]DD:MM:SS.sss (string), e.g. +12:52:32.423 or -12:52:32.423
-            \li DD.dddd (float, string), e.g. 12.542326
-            \li DD MM SS.sss (string, array), e.g. +12 52 32.423
-        Whitespace may be spaces and/or tabs.
+        Parameters
+        ----------
+        degrees : float, str
+            If a string, accepts values in these formats:
+                * [+|-]DD:MM:SS.sss (string), e.g. +12:52:32.423 or -12:52:32.423
+                * DD.dddd (float, string), e.g. 12.542326
+                * DD MM SS.sss (string, array), e.g. +12 52 32.423
+            Whitespace may be spaces and/or tabs.
+        outputDMS : bool
+            If True, returns a tuple of (degree, arcminute, arcsecond)
     
         Returns degrees in decimal form unless the keyword "outputDMS" is True, in which
         case returns a tuple: (d, m, s).
+        
     """
     
     # either a string or a float
     x = degrees
     
-    if isinstance(x, float):
+    if isinstance(x, float) or isinstance(x, int):
         parsedDegrees = x
         parsedDMS = degreesToDMS(parsedDegrees)
     
@@ -251,7 +260,7 @@ def parseDegrees(degrees, outputDMS=False):
         parsedDegrees = x.degrees
         parsedDMS = degreesToDMS(parsedDegrees)
     else:
-        raise ValueError("convert.parseDegrees: could not parse value of type {0}.".format(type(x.__name__)))
+        raise ValueError("convert.parseDegrees: could not parse value of {0}.".format(type(x)))
     
     if outputDMS:
         return parsedDMS
@@ -331,19 +340,23 @@ def degreesToString(d, precision=5, pad=False, sep=":"):
 
 # RADIANS
 def parseRadians(radians):
-    """ \brief Parses an input "radians" value into a float number.
-        
-        This function is mostly for consistency with the other "parse" functions, like
-        parseHours and parseDegrees. 
+    """ Parses an input "radians" value into a float number.
         
         Convert radians given in any parseable format (float or Angle) into float radians.
-            
-        \param radians (\c float, \c int, \c Angle) The input angle.
+        
+        ..Note::
+            This function is mostly for consistency with the other "parse" functions, like
+            parseHours and parseDegrees. 
+        
+        Parameters
+        ----------
+        radians : float, int, Angle
+            The input angle.
     """
     x = radians
     
-    if isinstance(x, float):
-        return x
+    if isinstance(x, float) or isinstance(x, int):
+        return float(x)
     
     elif isinstance(x, g.Angle):
         return x.radians
@@ -374,25 +387,32 @@ def radiansToDMS(r):
     return degreesToDMS(degrees)  
 
 # Combinations
-def parseRADec(radec, ra_units="hours", dec_units="degrees"):
-    """ """
+def parseRADecString(radec, ra_units="hours", dec_units="degrees"):
+    """ Parses a string representing both an RA and Dec, for 
+        example a Jstring such as J141213.23+161252.12 or
+        03:14:15.9 +26:37:10.11
+        
+        Parameters
+        ----------
+        radec : str
+            The string representing an RA and Dec
+    
+    """
     
     div = '[:|/|\t|\-|\sdms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
-    ra_pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div
+    ra_pattr = '^[J]{0,1}([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div
     dec_pattr = '([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
-    pattr = ra_pattr + "[\s|_]+" + dec_pattr
+    pattr = ra_pattr + "[\s|_]*" + dec_pattr
     
     try:
         elems = re.search(pattr, radec).groups()
     except:
-        raise ValueError("convert.parseRADec: Invalid input string! ('{0}')".format(radec))
-    
-    print elems
+        raise ValueError("parseRADecString: Invalid input string! ('{0}')".format(radec))
     
     ra = g.RA(hmsToHours(*map(float,elems[:3])), units=ra_units)
     dec = g.Dec(dmsToDegrees(*map(float,elems[3:])), units=dec_units)
     
-    return g.RADec((ra,dec))
+    return (ra,dec)
     
 # Time Conversions:
 def datetimeToDecimalTime(datetimeObj=None):
@@ -403,19 +423,22 @@ def datetimeToDecimalTime(datetimeObj=None):
 
 def hmsToStringTime(h, m, s, precision=5, sep=":", pad=True):
     """ Convert a sexagesimal time to a formatted string.
-    
-    \param hour (\c int, \c float)
-    \param min (\c int, \c float)
-    \param sec (\c int, \c float)
-    \param precision (\c int) This controls how many decimal places to display in Seconds.
-    \param sep (\c str, \c tuple, \c list) This specifies what separator to place between the hour, 
-        minute, and seconds. e.g. sep=':' means a string like "13:27:15.1412". You can also specify 
-        a string, tuple, or list of length 2 or 3 to control each separator. For length 2, e.g.
-        sep=':-', this means a string like "13:27-15.1412". For length 3, e.g. ("h","m","s"), this
-        means a string like "13h27m15.1412s".
-    \param pad (\c boolean) Specify whether to pad value with spaces or zeros so values line up
-    
-    \return String formatted time, e.g. HH:MM:SS.SSSSS
+        
+        Parameters
+        ----------
+    	hour : int, float
+    	min : int, float
+    	sec : int, float
+    	precision : int
+    	    This controls how many decimal places to display in Seconds.
+    	sep : str, tuple, list
+    	    This specifies what separator to place between the hour, 
+            minute, and seconds. e.g. sep=':' means a string like "13:27:15.1412". You can also specify 
+            a string, tuple, or list of length 2 or 3 to control each separator. For length 2, e.g.
+            sep=':-', this means a string like "13:27-15.1412". For length 3, e.g. ("h","m","s"), this
+            means a string like "13h27m15.1412s".
+    	pad : bool
+    	    Specify whether to pad value with spaces or zeros so values line up
     
     """
     if h >= 0:
@@ -429,16 +452,20 @@ def hmsToStringTime(h, m, s, precision=5, sep=":", pad=True):
 def decimalToStringTime(decim, precision=5, sep=":", pad=True):
     """ Convert a decimal time or coordinate to a formatted string.
     
-    \param decim (\c int, \c float) The decimal time value to convert.
-    \param precision (\c int) This controls how many decimal places to display in Seconds.
-    \param sep (\c str, \c tuple, \c list) This specifies what separator to place between the hour, 
-        minute, and seconds. e.g. sep=':' means a string like "13:27:15.1412". You can also specify 
-        a string, tuple, or list of length 2 or 3 to control each separator. For length 2, e.g.
-        sep=':-', this means a string like "13:27-15.1412". For length 3, e.g. ("h","m","s"), this
-        means a string like "13h27m15.1412s".
-    \param pad (\c boolean) Specify whether to pad value with spaces or zeros so values line up
-    
-    \return String formatted time, e.g. HH:MM:SS.SSSSS
+        Parameters
+        ----------
+    	decim : int, float
+    	    The decimal time value to convert.
+    	precision : int
+    	    This controls how many decimal places to display in Seconds.
+    	sep : str, tuple, list
+    	    This specifies what separator to place between the hour, 
+            minute, and seconds. e.g. sep=':' means a string like "13:27:15.1412". You can also specify 
+            a string, tuple, or list of length 2 or 3 to control each separator. For length 2, e.g.
+            sep=':-', this means a string like "13:27-15.1412". For length 3, e.g. ("h","m","s"), this
+            means a string like "13h27m15.1412s".
+    	pad : bool
+    	    Specify whether to pad value with spaces or zeros so values line up
     
     """
 
@@ -446,17 +473,19 @@ def decimalToStringTime(decim, precision=5, sep=":", pad=True):
 
 # JD / MJD conversions
 def ymdToJD(year, month, day):
-    """ 
-    \brief Converts a year, month, and day to a Julian Date.
+    """ Converts a year, month, and day to a Julian Date.
     
-    This function uses an algorithm from the book "Practical Astronomy with your 
-    Calculator" by Peter Duffet-Smith (Page 7)
+        This function uses an algorithm from the book "Practical Astronomy with your 
+        Calculator" by Peter Duffet-Smith (Page 7)
     
-    \param year (\c int) A Gregorian year
-    \param month (\c int) A Gregorian month
-    \param day (\c int) A Gregorian day
-    
-    \return jd (\c float) A Julian Date computed from the input year, month, and day.
+        Parameters
+        ----------
+        year : int
+            A Gregorian year
+        month : int
+            A Gregorian month
+        day : int
+            A Gregorian day
     
     """
     if month == 1 or month == 2:
@@ -482,54 +511,61 @@ def ymdToJD(year, month, day):
     return B + C + D + day + 1720994.5
 
 def ymdToMJD(year, month, day):
-    """ 
-    \brief Converts a year, month, and day to a Modified Julian Date.
+    """ Converts a year, month, and day to a Modified Julian Date.
     
-    This function uses an algorithm from the book "Practical Astronomy with your 
-    Calculator" by Peter Duffet-Smith (Page 7)
+        This function uses an algorithm from the book "Practical Astronomy with your 
+        Calculator" by Peter Duffet-Smith (Page 7)
+        
+        Parameters
+        ----------
+        year : int
+            A Gregorian year
+        month : int
+            A Gregorian month
+        day : int
+            A Gregorian day
     
-    \param year (\c int) A Gregorian year
-    \param month (\c int) A Gregorian month
-    \param day (\c int) A Gregorian day
-    
-    \return jd (\c float) A Modified Julian Date computed from the input year, month, and day.
     """
     return jdToMJD(ymdToJD(year, month, day))
 
 def mjdToJD(mjd):
-    """ 
-    \brief Converts a Modified Julian Date to Julian Date
+    """ Converts a Modified Julian Date to Julian Date
+        
+        Parameters
+        ----------
+        mjd : float, int
+            A Modified Julian Date
     
-    \param mjd (\c float, \c int) A Modified Julian Date
-    
-    \return jd (\c float) The Julian Date calculated from the input Modified Julian Date    
     """
     return mjd + 2400000.5
 
 def jdToMJD(jd):
-    """ 
-    \brief Converts a Julian Date to a Modified Julian Date
+    """ Converts a Julian Date to a Modified Julian Date
 
-    \param jd (\c float, \c int) A Julian Date
+        Parameters
+        ----------
+        jd : float, int
+            A Julian Date
     
-    \return mjd (\c float) The Modified Julian Date calculated from the input Julian Date        
     """
     return float(jd - 2400000.5)
 
 def jdToDatetime(fracJD, timezone=gmt):
-    """ 
-    Converts a Julian Date to a Python datetime object. The resulting time is in UTC, unless a
-    time zone is supplied.
+    """ Converts a Julian Date to a Python datetime object. The resulting time is in UTC, unless a
+        time zone is supplied.
     
-    This function uses an algorithm from the book "Practical Astronomy with your Calculator" 
-    by Peter Duffet-Smith (Page 8)
-    
-    \param jd (\c float, \c int) A Julian Date
-    \param timezone (\c int, \c datetime.tzinfo) An integer representing the timezone to convert to in hours offset
+        This function uses an algorithm from the book "Practical Astronomy with your Calculator" 
+        by Peter Duffet-Smith (Page 8)
+        
+        Parameters
+        ----------
+        jd : float, int
+            A Julian Date
+        timezone : int, datetime.tzinfo
+            An integer representing the timezone to convert to in hours offset
             from Greenwich Mean Time. Also accepts a datetime.tzinfo object. If no timezone is specified, it assumes
             GMT time.
     
-    \param (\c datetime.datetime) A Python datetime.datetime object representing the input JD 
     """
     
     if isinstance(timezone, int) or isinstance(timezone, float):
@@ -583,37 +619,40 @@ def jdToDatetime(fracJD, timezone=gmt):
     return dtObj.astimezone(tz)
     
 def mjdToDatetime(mjd, timezone=gmt):
-    """ 
-    \brief Converts a Modified Julian Date to a Python datetime object. 
+    """ Converts a Modified Julian Date to a Python datetime object. 
     
-    The resulting time is in UTC, unless a time zone is supplied.
-    This function uses an algorithm from the book "Practical Astronomy with your Calculator" 
-    by Peter Duffet-Smith (Page 8)
-    
-    \param mjd (\c float, \c int) A Modified Julian Date
-    \param timezone (\c int, \c datetime.tzinfo) An integer representing the timezone to convert to in hours offset
+        The resulting time is in UTC, unless a time zone is supplied.
+        This function uses an algorithm from the book "Practical Astronomy with your Calculator" 
+        by Peter Duffet-Smith (Page 8)
+        
+        Parameters
+        ----------
+        mjd : float, int
+            A Modified Julian Date
+        timezone : int, datetime.tzinfo
+            An integer representing the timezone to convert to in hours offset
             from Greenwich Mean Time. Also accepts a datetime.tzinfo object. If no timezone is specified, it assumes
             GMT time.
-    
-    \param (\c datetime.datetime) A Python datetime.datetime object representing the input MJD 
     """
     jd = mjdToJD(mjd)
     return jdToDatetime(jd, timezone=timezone)
 
 def datetimeToJD(datetimeObj, timezone=None):
-    """ 
-    \brief Converts a Python datetime object to a float Julian Date (JD).
+    """ Converts a Python datetime object to a float Julian Date (JD).
     
-    The JD is calculated using an algorithm from the book "Practical Astronomy with your 
-    Calculator" by Peter Duffet-Smith (Page 7)
+        The JD is calculated using an algorithm from the book "Practical Astronomy with your 
+        Calculator" by Peter Duffet-Smith (Page 7)
+        
+        Parameters
+        ----------
+        datetimeObj : datetime.datetime
+            A Python datetime.datetime object
+        timezone : int, `datetime.tzinfo`
+            Either an integer specifying the offset from UTC of
+            the datetime object, or a `tzinfo` object.
     
-    \param datetimeObj (\c datetime.datetime) A Python datetime.datetime object
-    \param timezone (\c int, \c datetime.tzinfo) Either an integer specifying the offset from UTC of
-        the datetime object, or a \c tzinfo object.
-    
-    \return (\c float) A Julian Date
     """
-    #raise ValueError("You must specify a timezone with the 'timezone' parameter. \nThis can either be an hour offset (e.g. -5) or a datetime.tzinfo object.")
+
     if datetimeObj.utcoffset() == None and timezone == None:
         raise ValueError("Either the input datetime object must know it's timezone (see: datetime.tzinfo), or you must supply a timezone!")
     elif datetimeObj.utcoffset() == None and timezone != None:
@@ -640,39 +679,42 @@ def datetimeToJD(datetimeObj, timezone=None):
     return A + B
 
 def datetimeToMJD(datetimeObj, timezone=None):
-    """ 
-    \brief Converts a Python datetime object to a float Modified Julian Date (MJD).
+    """ Converts a Python datetime object to a float Modified Julian Date (MJD).
     
-    The MJD is calculated using an algorithm from the book "Practical Astronomy with your 
-    Calculator" by Peter Duffet-Smith (Page 7)
-    
-    \param datetimeObj (\c datetime.datetime) A Python datetime.datetime object
-    \param timezone (\c int, \c datetime.tzinfo) Either an integer specifying the offset from UTC of
-        the datetime object, or a \c tzinfo object.
+        The MJD is calculated using an algorithm from the book "Practical Astronomy with your 
+        Calculator" by Peter Duffet-Smith (Page 7)
         
-    \return (\c float) A Modified Julian Date
+        Parameters
+        ----------
+        datetimeObj : datetime.datetime
+            A Python datetime.datetime object
+        timezone : int, `datetime.tzinfo`
+            Either an integer specifying the offset from UTC of
+            the datetime object, or a `tzinfo` object.
+        
     """
     jd = datetimeToJD(datetimeObj, timezone=timezone)
     return jdToMJD(jd)
 
 # UTC / GMST / LST
 def datetimeToGMST(datetimeObj, timezone=None):
-    """ 
-    \brief Converts a datetime object to Greenwich Mean Sidereal Time.
+    """ Converts a datetime object to Greenwich Mean Sidereal Time.
     
-    Either the datetime object (datetimeObj) must contain timezone information, or the
-    timezone parameter must be specified.
+        Either the datetime object (datetimeObj) must contain timezone information, or the
+        timezone parameter must be specified.
+        
+        This function uses an algorithm from the book "Practical Astronomy with your 
+        Calculator" by Peter Duffet-Smith (Page 17)
+        
+        Parameters
+        ----------
+        datetimeObj : `datetime.datetime`
+            A Python datetime.datetime object representing
+            a time in UTC
+        timezone : int, `datetime.tzinfo`
+            Either an integer specifying the offset from UTC of
+            the datetime object, or a \c tzinfo object.
     
-    This function uses an algorithm from the book "Practical Astronomy with your 
-    Calculator" by Peter Duffet-Smith (Page 17)
-    
-    \param datetimeObj (\c datetime.datetime) A Python datetime.datetime object representing
-        a time in UTC
-    \param timezone (\c int, \c datetime.tzinfo) Either an integer specifying the offset from UTC of
-        the datetime object, or a \c tzinfo object.
-    
-    \return (\c datetime.datetime) A Python datetime.datetime object corresponding to the 
-        Greenwich Mean Sidereal Time of the input datetime.datetime object.
     """
     
     jd = datetimeToJD(datetimeObj, timezone=timezone)
@@ -694,18 +736,18 @@ def datetimeToGMST(datetimeObj, timezone=None):
     return astrodatetime(year=datetimeObj.year, month=datetimeObj.month, day=datetimeObj.day, hour=h, minute=m, second=int(s), microsecond=int(ms))
 
 def gmstToDatetime(datetimeObj, timezone=None):
-    """ 
-    \brief Converts a datetime object representing a Greenwich Mean Sidereal Time 
-    to UTC time. 
+    """ Converts a datetime object representing a Greenwich Mean Sidereal Time 
+        to UTC time. 
     
-    This function uses an algorithm from the book "Practical Astronomy with your Calculator" 
-    by Peter Duffet-Smith (Page 18)
+        This function uses an algorithm from the book "Practical Astronomy with your Calculator" 
+        by Peter Duffet-Smith (Page 18)
+        
+        Parameters
+        ----------
+        datetimeObj : datetime.datetime
+            A Python datetime.datetime object representing
+            a time in GMST
     
-    \param datetimeObj (\c datetime.datetime) A Python datetime.datetime object representing
-        a time in GMST
-    
-     \return (\c datetime.datetime) A Python datetime.datetime object corresponding to UTC time of the input 
-        Greenwich Mean Sidereal Time datetime.datetime object. 
     """
     jd = datetimeToJD(datetimeObj, timezone=timezone)
     

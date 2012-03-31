@@ -28,14 +28,10 @@
 TODO:
     - More unit tests!
     - Finish CoordinateSystem and subclasses
-    - doxypy style documentation
-    - fix __all__ to contain the actual classes
-    - setBounds is wrong!
-    - EquatorialCoordinates should accept a J1241+134134 whatever string
 """
 
 __author__ = 'Adrian Price-Whelan <adrn@astro.columbia.edu>'
-__all__ = ["Angle", "RA", "Dec"]
+__all__ = ["Angle", "RA", "Dec", "RADec"]
 
 # Standard library dependencies (e.g. sys, os)
 #from math import cos, acos, sin, radians, degrees
@@ -49,74 +45,63 @@ from custom_errors import *
 import globals
 
 class Angle(object):
-    """ \brief This class represents an Angle. 
+    """ This class represents an Angle. 
         
-        Set the bounds by specifying angleObject.bounds = (lower, upper). Detailed 
-        description here! [APW]
-    
+        The units must be specified by the units parameter.
+        Degrees and hours both accept either a string like '15:23:14.231,' or a
+        decimal representation of the value, e.g. 15.387. For more explicit calls,
+        use the convenience functions `fromDegrees`, `fromRadians`, and `fromHours`.
+        
+        Parameters
+        ----------
+        angle : float, int, str
+            The angle value
+        units : {'degrees', 'radians', 'hours'}
+
     """
     
-    _customBounds = False
+    def __init__(self, angle, units):
+        # Make the `units` string lower case, and validate the `units`
+        lowUnits = units.lower()
+                
+        try:
+            if lowUnits == "degrees":
+                self.radians = math.radians(convert.parseDegrees(angle))
+                
+            elif lowUnits == "radians":
+                self.radians = float(angle)
+                
+            elif lowUnits == "hours":
+                # can accept string or float in any valid format
+                self.radians = convert.hoursToRadians(convert.parseHours(angle))
+            
+            else:
+                raise IllegalUnitsError(units)
+        except ValueError:
+            raise ValueError("{1}: the angle value given couldn't be parsed (was of type {0})".format(type(angle).__name__, type(self).__name__))
     
     @classmethod
     def fromDegrees(cls, val): 
-        """ \brief Create an \em Angle() object with input units of Degrees """
+        """ Create an `Angle` object with input units of Degrees """
         return cls(val, units="degrees")
         
     @classmethod
     def fromHours(cls, val):
-        """ \brief Create an \em Angle() object with input units of Hours """
+        """ Create an `Angle` object with input units of Hours """
         return cls(val, units="hours")
         
     @classmethod
     def fromRadians(cls, val):
-        """ \brief Create an \em Angle() object with input units of Radians """
+        """ Create an `Angle` object with input units of Radians """
         return cls(val, units="radians")
         
     @classmethod
     def fromDatetime(cls, dt):
-        """ \brief Create an \em Angle() object with a Python datetime.datetime() object """
+        """ Create an `Angle` object with a Python `datetime.datetime` object """
         return cls(convert.datetime2decimalTime(dt), units="hours")
-    
-    def __init__(self, angle, units):
-        """ Accepts an angle value. The angle parameter accepts degrees, hours, or
-            radians and the units must be specified by the units parameter.
-            Degrees and hours both accept either a string like '15:23:14.231,' or a
-            decimal representation of the value, e.g. 15.387.
-    
-        \param angle (\c float, \c int) the angle value
-        \param units (\c string) the units of the angle value
-            
-        """
-        
-        lowUnits = units.lower()
-        if lowUnits not in globals.VALIDUNITS:
-            raise IllegalUnitsError(units)
-        
-        if lowUnits == "degrees":
-            #try:
-            #    self.radians = math.radians(float(angle))
-            #except ValueError:
-            #    raise ValueError("geometry.Angle: the value given for degrees couldn't be converted into a float (was of type {0})".format(type(degrees).__name__))
-            self.radians = math.radians(convert.parseDegrees(angle))
-            
-        elif lowUnits == "radians":
-            try:
-                self.radians = float(angle)
-            except ValueError:
-                raise ValueError("geometry.Angle: the value given for radians couldn't be converted into a float (was of type {0})".format(type(radians).__name__))
-            
-        elif lowUnits == "hours":
-            # can accept string or float in any valid format
-            self.radians = convert.hoursToRadians(convert.parseHours(angle))
-
-        else:
-            raise IllegalUnitsError(units)
-        
-        self.setBounds(0., 2.*math.pi)
 
     def __repr__(self):
-        return "<Angle: {0} degrees ({1})>".format(math.degrees(self.radians), convert.degreesToString(self.degrees))
+        return "<{2}: {0} degrees ({1})>".format(math.degrees(self.radians), convert.degreesToString(self.degrees), type(self).__name__)
     
     @property
     def degrees(self):
@@ -132,23 +117,21 @@ class Angle(object):
     def hms(self):
         """ Returns the angle's value in hours, and print as an (h,m,s) tuple (read-only property). """
         return convert.hoursToHMS(convert.radiansToHours(self.radians))
-    
-    @property
-    def degrees(self):
-        """ Returns the angle's value in degrees (read-only property). """
-        return math.degrees(self.radians) # converts radians to degrees
 
     def string(self, units="degrees", decimal=False, sep=" ", precision=5, pad=False): 
-        """ \brief Returns a string representation of the angle.
+        """ Returns a string representation of the angle.
         
-        Parameters
-        ----------
-        \param units (\c str) Specifies the units, value should be one of "degrees", "radians", "hours"
-        \param decimal (\c bool) Specifies whether to return a sexagesimal representation (e.g. a tuple 
-            (hours, minutes, seconds)), or decimal
-        \param sep (\c str) The separator between numbers in a sexagesimal representation, e.g. 12:41:11.1241
-            where the separator is ":". Also accepts 2 or 3 separators, e.g. 12h41m11.1241s would be sep="hms",
-            or 11-21:17.124 would be sep="-:"
+            Parameters
+            ----------
+            units : str
+                Specifies the units, value should be one of the allowed units values (see: `Angle`)
+            decimal : bool
+                Specifies whether to return a sexagesimal representation (e.g. a tuple 
+                (hours, minutes, seconds)), or decimal
+            sep : str
+                The separator between numbers in a sexagesimal representation, e.g. 12:41:11.1241
+                where the separator is ":". Also accepts 2 or 3 separators, e.g. 12h41m11.1241s would be sep="hms",
+                or 11-21:17.124 would be sep="-:"
         """
         
         lowUnits = units.lower()
@@ -169,242 +152,191 @@ class Angle(object):
                 return convert.hoursToString(self.hours, precision=precision, sep=sep, pad=pad)
         else:
             raise IllegalUnitsError(units)
-    
-    def setBounds(self, low, hi, units="radians"):
-        """ \brief Allows the user to specify the bounds of the angle.
-        
-            By default, these bounds are {0,2π}, but this can be modulated. For example, if you
-            want to change the bounds to {-π,π}, you can specify angle.setBounds(-pi, pi). The 
-            default units are radians, but alternatively you can specify the range in degrees or
-            hours.
+            
+    def normalize(self, bounds, units, inplace=False):
+        """ Normalize the angle to be within the bounds specified. If inplace==True, 
+            this replace the internal values, otherwise it returns a new Angle object.
             
             Parameters
             ----------
-            \param low (\c float, \c int) The lower bound.
-            \param hi (\c float, \c int) The upper bound.
-            \param units (\c str) The units, value should be one of "degrees", "radians", "hours"
+            bounds : tuple
+                A tuple with 2 values (low, hi) where this is the range you would like
+                to normalize the angle to. For example, if you have an angle value of 
+                752.1834 but you want it to be within the range -180 -> +180, you can
+                specifiy `Angle.normalize((-180, 180), units="degrees")`.
         """
         
+        # Validate the units
         lowUnits = units.lower()
+        convert.parseDegrees(bounds[1])
+        if lowUnits == "degrees":
+            radianBounds = (math.radians(convert.parseDegrees(bounds[0])), math.radians(convert.parseDegrees(bounds[1])))
+        elif lowUnits == "radians":
+            radianBounds = (float(bounds[0]), float(bounds[1]))
+        elif lowUnits == "hours":
+            radianBounds = (convert.hoursToRadians(convert.parseHours(bounds[0])), convert.hoursToRadians(convert.parseHours(bounds[1])))
         
-        try:
-            if lowUnits == "degrees":
-                low = math.radians(float(low))
-                hi = math.radians(float(hi))
-            elif lowUnits == "radians":
-                low = float(low)
-                hi = float(hi)
-            elif lowUnits == "hours":
-                low = math.radians(float(low)*15.)
-                hi = math.radians(float(hi)*15.)
-            else:
-                raise IllegalUnitsError(units)
-        except ValueError:
-            raise ValueError("Angle.bounds() Invalid bound input! You specified: {0},{1}".format(low, hi))    
+        if inplace:
+            obj = self
+        else:
+            obj = copy.copy(self)
         
-        self._customBounds = True
-        self._bounds = (low, hi)
+        if obj.radians < radianBounds[0]:
+            obj.radians = obj.radians % radianBounds[1]
             
-    def normalize(self):
-        """ \brief Normalize the angle to be within the set bounds (self._bounds), and 
-            replace the internal values.
-        """
-        if self.radians < self._bounds[0]:
-            self.radians = self.radians % self._bounds[1]
-            
-        elif self.radians >= self._bounds[1]:
-            if self._bounds[0] == 0:
-                self.radians = self.radians % self._bounds[1]
+        elif obj.radians >= radianBounds[1]:
+            if radianBounds[0] == 0:
+                obj.radians = obj.radians % radianBounds[1]
             else:
-                self.radians = self.radians % self._bounds[0]
+                obj.radians = obj.radians % radianBounds[0]
+        
+        return obj
     
     def __radians__(self): return self.radians
     def __degrees__(self): return self.degrees
     
     # Addition
     def __add__(self, other, option='left'):
-        selfCopy = copy.copy(self)
-        otherCopy = copy.copy(other)
-        
         if not isinstance(otherCopy, Angle): 
-            raise TypeError("Can't add an Angle object and a {0}!".format(otherCopy.__class__))
+            raise TypeError("Can't add an {1} object and a {0}!".format(otherCopy.__class__, type(self).__name__))
+            
         if option == 'left':
-            selfCopy.units = otherCopy.units
-            return Angle.fromUnits(selfCopy._value + otherCopy._value, selfCopy.units)
+            return Angle.fromRadians(self.radians + other.radians)
         elif option == 'right':
-            otherCopy.units = selfCopy.units
-            return Angle.fromUnits(otherCopy._value + selfCopy._value, otherCopy.units)
+            return Angle.fromRadians(other.radians + self.radians)
     def __radd__(self, other): return self.__add__(other, 'right')
     
     # Subtraction
     def __sub__(self, other, option='left'):
         if not isinstance(other, Angle): 
-            raise TypeError("Can't subtract an Angle object and a %s!" % other.__class__)
-        
-        selfCopy = copy.copy(self)
-        otherCopy = copy.copy(other)
+            raise TypeError("Can't subtract an {1} object and a {0}!".format(other.__class__, type(self).__name__))
         
         if option == 'left':
-            selfCopy.units = otherCopy.units
-            return Angle.fromUnits(selfCopy._value - otherCopy._value, selfCopy.units)
+            return Angle.fromRadians(self.radians - other.radians)
         elif option == 'right':
-            otherCopy.units = selfCopy.units
-            return Angle.fromUnits(otherCopy._value - selfCopy._value, otherCopy.units)
+            return Angle.fromRadians(other.radians - self.radians)
     def __rsub__(self, other): return self.__sub__(other, 'right')
     
     # Multiplication
     def __mul__(self, other, option='left'):
         if isinstance(other, Angle):
-            raise TypeError("Multiplication is not supported between two Angle objects!")
+            raise TypeError("Multiplication is not supported between two {0} objects!".format(type(self).__name__))
         else:
-            return Angle.fromUnits(self.degrees * other, "degrees")
+            return Angle.fromRadians(self.radians * other)
     def __rmul__(self, other): return self.__mul__(other, option='right')
     
     # Division
     def __div__(self, other):
         if isinstance(other, Angle):
-            raise TypeError("Division is not supported between two Angle objects!")
+            raise TypeError("Division is not supported between two {0} objects!".format(type(self).__name__))
         else:
-            return Angle.fromUnits(self.degrees / other, "degrees")
+            return Angle.fromRadians(self.radians / other)
     def __rdiv__(self, other):
         if isinstance(other, Angle):
-            raise TypeError("Division is not supported between two Angle objects!")
+            raise TypeError("Division is not supported between two {0} objects!".format(type(self).__name__))
         else:
-            return Angle.fromUnits(other / self.degrees, "degrees")
+            return Angle.fromRadians(other / self.radians)
     
     def __truediv__(self, other):
         if isinstance(other, Angle):
-            raise TypeError("Division is not supported between two Angle objects!")
+            raise TypeError("Division is not supported between two {0} objects!".format(type(self).__name__))
         else:
-            return Angle.fromUnits(self.degrees / other, "degrees")
+            return Angle.fromRadians(self.radians / other)
     def __rtruediv__(self, other):
         if isinstance(other, Angle):
-            raise TypeError("Division is not supported between two Angle objects!")
+            raise TypeError("Division is not supported between two {0} objects!".format(type(self).__name__))
         else:
-            return Angle.fromUnits(other / self.degrees, "degrees")
+            return Angle.fromRadians(other / self.radians)
 
     def __neg__(self):
         return Angle.fromRadians(-self.radians)
 
 class RA(Angle):
-    """ Represents a J2000 Right Ascension """
+    """ Represents a J2000 Right Ascension 
     
-    def __init__(self, angle, units="hours"):
-        """ Accepts a Righ Ascension angle value. The angle parameter accepts degrees, 
-            hours, or radians and the default units are hours.
-            Degrees and hours both accept either a string like '15:23:14.231,' or a
-            decimal representation of the value, e.g. 15.387.
+        Accepts a Righ Ascension angle value. The angle parameter accepts degrees, 
+        hours, or radians and the default units are hours.
+        Degrees and hours both accept either a string like '15:23:14.231,' or a
+        decimal representation of the value, e.g. 15.387.
+        
+        Parameters
+        ----------
+        angle : float, int
+            The angle value
+        units : string
+            The units of the angle value
     
-        \param angle (\c float, \c int) the angle value
-        \param units (\c string) the units of the angle value
-            
-        """
-        
-        lowUnits = units.lower()
-        if lowUnits not in globals.VALIDUNITS:
-            raise IllegalUnitsError(units)
-        
-        if lowUnits == "degrees":
-            #try:
-            #    self.radians = math.radians(float(angle))
-            #except ValueError:
-            #    raise ValueError("geometry.RA: the value given for degrees couldn't be converted into a float (was of type {0})".format(type(degrees).__name__))
-            self.radians = math.radians(convert.parseDegrees(angle))
-            
-        elif lowUnits == "radians":
-            try:
-                self.radians = float(angle)
-            except ValueError:
-                raise ValueError("geometry.RA: the value given for radians couldn't be converted into a float (was of type {0})".format(type(radians).__name__))
-            
-        elif lowUnits == "hours":
-            # can accept string or float in any valid format
-            self.radians = convert.hoursToRadians(convert.parseHours(angle))
+    """
+    
+    def __init__(self, angle, units=None):
+        # Default units for Righ Ascension are hours
+        if units == None:
+            units = "hours"
 
-        else:
-            raise IllegalUnitsError(units)
-        
-        self.setBounds(0., 2.*math.pi)
-
-    def ha(self, lst, units="hours"):
-        """ \brief Given a Local Sidereal Time (LST), calculate the hour angle for this RA
+        super(RA, self).__init__(angle, units)
     
-        \param lst (\c float, \c string, \c Angle) A Local Sidereal Time (LST)
-        \param units (\c string) The units of the LST, if not an Angle object
+    def hourAngle(self, lst, units="hours"):
+        """ Given a Local Sidereal Time (LST), calculate the hour angle for this RA
         
-            \li if lst is *not* an Angle object, you can specify the units by passing a 'units'
-                parameter into the call
-            \li units can be "radians", "degrees", or "hours"
-            \li this function always returns an Angle object
+            Parameters
+            ----------
+            lst : float, str, `Angle`
+                A Local Sidereal Time (LST)
+            units : str
+                The units of the LST, if not an `Angle` object or datetime.datetime object
+                .. note::
+                    * if lst is **not** an `Angle`-like object, you can specify the units by passing a `units` parameter into the call
+                    * this function currently returns an `Angle` object
         """
-        # [APW] : this should return an HA() object, and accept an Angle or LST object
+        # TODO : this should return an HA() object, and accept an Angle or LST object
         if not isinstance(lst, Angle):
             lst = Angle(lst, units)
         
         return Angle(lst.radians - self.radians, units="radians")
     
-    def hourAngle(self, lst, units="hours"):
-        return ha(self, lst, units)
+    def lst(self, hourAngle, units="hours"):
+        """ Given an Hour Angle, calculate the Local Sidereal Time (LST) for this RA
     
-    def lst(self, ha, units="hours"):
-        """ \brief Given an Hour Angle, calculate the Local Sidereal Time (LST) for this RA
-    
-        Parameters
-        ----------
-        \param ha (\c float, \c string, \c Angle) An Hour Angle
-        \param units (\c string) The units of the ha, if not an Angle object
-        
-        Notes
-        -----
-            - if ha is *not* an Angle object, you can specify the units by passing a 'units'
-                parameter into the call
-            - 'units' can be radians, degrees, or hours
-            - this function always returns an Angle object
+            Parameters
+            ----------
+            ha :  float, str, `Angle`
+                An Hour Angle
+            units : str
+                The units of the ha, if not an `Angle` object
+            
+            .. note:: if ha is *not* an Angle object, you can specify the units by passing a 'units' parameter into the call
+                'units' can be radians, degrees, or hours
+                this function always returns an Angle object
         """
+        # TODO : I guess this should return an HA() object, and accept an Angle or LST object
         if not isinstance(ha, Angle):
             ha = Angle(ha, units)
             
         return Angle(ha.radians + self.radians, units="radians")
 
 class Dec(Angle):
-    """ \brief Represents a J2000 Declination """
+    """ Represents a J2000 Declination """
     
     def __init__(self, angle, units="degrees"):
         """ Accepts a Declination angle value. The angle parameter accepts degrees, 
             hours, or radians and the default units are hours.
             Degrees and hours both accept either a string like '15:23:14.231,' or a
             decimal representation of the value, e.g. 15.387.
-    
-        \param angle (\c float, \c int) the angle value
-        \param units (\c string) the units of the angle value
+        
+            Parameters
+            ----------
+            angle : float, int
+                The angular value
+            units : str 
+                The units of the specified declination
             
         """
         
-        lowUnits = units.lower()
-        if lowUnits not in globals.VALIDUNITS:
-            raise IllegalUnitsError(units)
+        # Default units for Declination are degrees
+        if units == None:
+            units = "degrees"
         
-        if lowUnits == "degrees":
-            #try:
-            #    self.radians = math.radians(float(angle))
-            #except ValueError:
-            #    raise ValueError("geometry.Dec: the value given for degrees couldn't be converted into a float (was of type {0})".format(type(degrees).__name__))
-            self.radians = math.radians(convert.parseDegrees(angle))
-            
-        elif lowUnits == "radians":
-            try:
-                self.radians = float(angle)
-            except ValueError:
-                raise ValueError("geometry.Dec: the value given for radians couldn't be converted into a float (was of type {0})".format(type(radians).__name__))
-            
-        elif lowUnits == "hours":
-            # can accept string or float in any valid format
-            self.radians = convert.hoursToRadians(convert.parseHours(angle))
-
-        else:
-            raise IllegalUnitsError(units)
-        
-        self.setBounds(0., 2.*math.pi)
+        super(Dec, self).__init__(angle, units)
 
 class RADec(object):
     """ Represents a J200 Equatorial coordinate system. """
@@ -422,42 +354,39 @@ class RADec(object):
             else:
                 self.dec = Dec(radec[1], dec_units)
         elif isinstance(radec, str):
-            ra, dec = convert.parseRADec(radec)
+            ra, dec = convert.parseRADecString(radec)
             self.ra = ra
             self.dec = dec
         else:
-            raise ValueError("RADec(): Invalid format! Must initilalize with a tuple (ra,dec) or a string.")
+            raise ValueError("RADec: Invalid format! Must initilalize with a tuple (ra,dec) or a string.")
     
     def __repr__(self):
         """ """
-        return "<RA: {0} | Dec: {1}>".format(self.ra.string(sep=":"), self.dec.string(sep=":", units="degrees"))
+        return "<RA: {0} (degrees) | Dec: {1} (degrees)>".format(self.ra.string(sep=":"), self.dec.string(sep=":", units="degrees"))
     
-    def __str__(self):
-        """ """
-        return "<{0}, {1}>".format(self.ra.degrees, self.dec.degrees)
+    def string(self):
+        # TODO: Write this function!
+        raise NotImplementedError("This function has not been implemented yet.")
+        return "{0},{1}".format(self.ra.degrees, self.dec.degrees)
     
     def subtends(self, other):
         """ Calculate the angle subtended by 2 coordinates on a sphere
     
-        Parameters
-        ----------
-        other : EquatorialCoordinates
-        
-        Returns
-        -------
-            Angle
+            Parameters
+            ----------
+            other : RADec
             
         """
         if not isinstance(other, RADec):
-            raise ValueError("You must pass another 'EquatorialCoordinate' into this function to calculate the angle subtended.")
+            raise ValueError("You must pass another RADec object into this function to calculate the angle subtended.")
         
         ang = math.acos(math.sin(self.dec.radians)*math.sin(other.dec.radians) + math.cos(self.dec.radians)*math.cos(other.dec.radians)*math.cos(self.ra.radians - other.ra.radians))
         
         angle = Angle.fromRadians(ang)
         return angle
     
-    def convertTo():
-        pass
+    def convertTo(self):
+        raise NotImplementedError("This function has not been implemented yet.")
 
 
 ''' This is all experimental 
@@ -488,15 +417,16 @@ class GalacticCartesianCoordinate(CartesianCoordinate):
 
 # Standalone functions
 def subtends(a1,b1,a2,b2,units="radians"):
-    """ \brief Calculate the angle subtended by 2 positions on the surface of a sphere.
+    """ Calculate the angle subtended by 2 positions on the surface of a sphere.
         
-        \param a1 (\c float, \c Angle)
-        \param b1 (\c float, \c Angle)
-        \param a2 (\c float, \c Angle)
-        \param a2 (\c float, \c Angle)
-        \param units (\c str) Specify the units for input / output. Must be either radians, degrees, or hours.
-        
-        \return (\c Angle)
+        Parameters
+        ----------
+        a1 : float, `Angle`
+        b1 : float, `Angle`
+        a2 : float, `Angle`
+        b2 : float, `Angle`
+        units : str
+            Specify the units for input / output. 
     """
     
     if units.lower() == "degrees":

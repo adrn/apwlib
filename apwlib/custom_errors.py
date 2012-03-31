@@ -27,7 +27,7 @@
 
 import globals
 
-class IllegalHourError(ValueError):
+class IllegalHourError:
     """
     Usage:
         if not 0 <= hr < 24:
@@ -38,7 +38,7 @@ class IllegalHourError(ValueError):
     def __str__(self):
         return "Bad hour value %r; hour must be in the range [0,24)" % self.hour
 
-class IllegalMinuteError(ValueError):
+class IllegalMinuteError:
     """
     Usage:
         if not 0 <= min < 60:
@@ -49,7 +49,7 @@ class IllegalMinuteError(ValueError):
     def __str__(self):
         return "Bad minute value %r; must be in the range [0,60)" % self.minute
 
-class IllegalSecondError(ValueError):
+class IllegalSecondError:
     """
     Usage:
         if not 0 <= sec < 60:
@@ -60,7 +60,7 @@ class IllegalSecondError(ValueError):
     def __str__(self):
         return "Bad second value %r; must be in the range [0,60)" % self.second
 
-class IllegalUnitsError(ValueError):
+class IllegalUnitsError:
     """
     Usage:
         if units not in VALIDUNITS:
