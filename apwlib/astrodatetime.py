@@ -33,7 +33,7 @@ __author__ = 'Adrian Price-Whelan <adrn@astro.columbia.edu>'
 import datetime as py_datetime
 
 class GMT0(py_datetime.tzinfo):
-    """ \brief This is a tzinfo subclass that represents the timezone in Greenwich,
+    """ This is a tzinfo subclass that represents the timezone in Greenwich,
         or Greenwich Mean Time (GMT+0). 
         
         This is used internally.
@@ -49,7 +49,7 @@ gmt = GMT0()
 
 class astrodatetime(py_datetime.datetime):
     """
-        \brief astrodatetime is a subclass of Python's datetime.datetime() object that
+        astrodatetime is a subclass of Python's datetime.datetime() object that
         supports astronomical dates and times such as JD and MJD, as well as Local 
         Sidereal Time.
     """
@@ -65,14 +65,20 @@ class astrodatetime(py_datetime.datetime):
         return convert.datetimeToJD(self)
     
     def lst(self, longitude, longitudeDirection="w", longitudeUnits="degrees", outputHMS=False):
-        """ \brief Compute the Local Sidereal Time for the datetime object 
+        """ Compute the Local Sidereal Time for the datetime object 
             given the a longitude.
             
-            \param longitude (\c float, \c int, \c Angle, \c str) The longitude in the specified units.
-            \param longitudeDirection (\c str) The direction from Greenwich that the longitude is measured in. 
-                Can be "E" or "W" (east or west), but by default is WEST.
-            \param longitudeUnits (\c str) Can be 'degrees', 'radians', or 'hours'
-            \param outputHMS (\c boolean) If True, will print the LST as an HMS tuple (hr, min, sec).
+            Parameters
+            ----------
+            longitude : float, int, `Angle`, str
+                The longitude in the specified units.
+            longitudeDirection : str, {'W', 'E'}
+                The direction from Greenwich that the longitude is measured in. 
+                Can be "E" or "W" (east or west), but by default is WEST ("W")
+            longitudeUnits : str 
+                Can be 'degrees', 'radians', or 'hours', degault is "degrees"
+            outputHMS : bool
+                If True, will print the LST as an HMS tuple (hr, min, sec).
         """
         
         try:
@@ -80,7 +86,7 @@ class astrodatetime(py_datetime.datetime):
         except ValueError:
             raise ValueError("In order to calculate the Local Sidereal Time, you must specify the timezone of the datetime object.\nYou must create a tzinfo() object, and do datetimeObject = datetimeObject.replace(tzinfo=someTimeZone)")
         
-        gmst = convert.utcDatetimeToGMST(utcSelf)
+        gmst = convert.datetimeToGMST(utcSelf)
         return convert.gmstToLST(convert.datetimeToDecimalTime(gmst), longitude, longitudeDirection=longitudeDirection, longitudeUnits=longitudeUnits, outputHMS=outputHMS)
     
     @staticmethod
@@ -102,9 +108,12 @@ class astrodatetime(py_datetime.datetime):
     
     @staticmethod
     def now(timezone=gmt):
-        """ \brief Overwrite the built-in now() method to return an astrodatetime object instead. 
+        """ Overwrite the built-in now() method to return an astrodatetime object instead. 
             
-            \param timezone (\c int, \c datetime.tzinfo) An integer representing the timezone to convert to in hours offset
+            Parameters
+            ----------
+            timezone : int, `datetime.tzinfo`
+                An integer representing the timezone to convert to in hours offset
                 from Greenwich Mean Time. Also accepts a datetime.tzinfo object. If no timezone is specified, it assumes
                 GMT time.
         

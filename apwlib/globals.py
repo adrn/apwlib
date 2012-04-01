@@ -18,3 +18,18 @@
 """
 
 VALIDUNITS = ["radians", "degrees", "hours"]
+
+# Used to color output
+_okColor = '\033[92m'
+_warnColor = '\033[93m'
+_errorColor = '\033[91m'
+_ENDC = '\033[0m'
+
+def greenText(text):
+    return "{0}{1}{2}".format(_okColor, text, _ENDC)
+    
+def yellowText(text):
+    return "{0}{1}{2}".format(_warnColor, text, _ENDC)
+
+def redText(text):
+    return "{0}{1}{2}".format(_errorColor, text, _ENDC)

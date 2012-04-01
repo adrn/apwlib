@@ -134,6 +134,10 @@ def parseHours(hours, outputHMS=False):
     elif isinstance(x, py_datetime.datetime):
         parsedHours = datetimeToDecimalTime(x)
         parsedHMS = hoursToHMS(parsedHours)
+        
+    elif isinstance(x, tuple):
+        parsedHours = hmsToHours(*x)
+        parsedHMS = x
     
     else:
         raise ValueError("parseHours: could not parse value of type {0}.".format(type(x.__name__)))
@@ -259,6 +263,11 @@ def parseDegrees(degrees, outputDMS=False):
     elif isinstance(x, g.Angle):
         parsedDegrees = x.degrees
         parsedDMS = degreesToDMS(parsedDegrees)
+        
+    elif isinstance(x, tuple):
+        parsedDegrees = dmsToDegrees(*x)
+        parsedDMS = x
+        
     else:
         raise ValueError("convert.parseDegrees: could not parse value of {0}.".format(type(x)))
     
