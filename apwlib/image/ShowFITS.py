@@ -24,15 +24,8 @@
 #
 
 """
-TODO:   - Create an ImageSession object that represents an ImageWindow + ImageControlWindow
-            -> FITSImageViewer should just know about how many ImageSessions it has, and be
-                able to list them
+TODO:   
         - Add invert button
-        - Make image control window bigger
-        - Make it impossible to close image control window, but closing image does it automatically
-        - Figure out why 
-        - Make it possible to open multiple files
-            -> This means detaching the show file command and having it instead keep a list of new windows...
         - scaleImage should detect screen resolution instead of 1680 x 1050 (my screen)
     
 """
@@ -231,9 +224,9 @@ class ImageSession:
         self.pilImage = Image.fromarray(self.scaledData.astype(np.uint8))
         self.pilImage = self.pilImage.resize((int(self.pilImage.size[0]*self.zoomFactor), int(self.pilImage.size[1]*self.zoomFactor)))
         self.tkImage = ImageTk.PhotoImage(self.pilImage)
-        self.tkImageLabel = Tk.Label(self.ImageWindow, image=self.tkImage, command=None)
-        self.tkImageLabel.grid(row=0, column=2, rowspan=5)
-        #self.tkImageLabel.bind("<ButtonRelease-1>", self.updateThumbnail)
+        self.tkImageLabel = Tk.Label(self.ImageWindow, image=self.tkImage, command=None, bg="red")
+        self.tkImageLabel.grid(row=0, column=2, rowspan=5, sticky="nswe")
+        #self.tkImageLabel.bind("<ButtonRelease-1>", self.toggleContour)
         self.tkImageLabel.bind("<Motion>", self.updateThumbnail)
         
         self.pilThumbnail = self.pilImage.transform(self.pilImage.size, Image.EXTENT, (0,0,50,50))
