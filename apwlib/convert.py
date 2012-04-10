@@ -140,7 +140,7 @@ def parseHours(hours, outputHMS=False):
         parsedHMS = x
     
     else:
-        raise ValueError("parseHours: could not parse value of type {0}.".format(type(x.__name__)))
+        raise ValueError("parseHours: could not parse value of type {0}.".format(type(x).__name__))
     
     if outputHMS:
         return parsedHMS
@@ -371,7 +371,7 @@ def parseRadians(radians):
         return x.radians
     
     else:
-        raise ValueError("convert.parseRadians: could not parse value of type {0}.".format(type(x.__name__)))
+        raise ValueError("convert.parseRadians: could not parse value of type {0}.".format(type(x).__name__))
 
 def radiansToDegrees(r):
     """ Convert an angle in Radians to Degrees """
