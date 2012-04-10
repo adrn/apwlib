@@ -27,6 +27,7 @@
 TODO:   
         - Add invert button
         - scaleImage should detect screen resolution instead of 1680 x 1050 (my screen)
+        - Build in point source finder?
     
 """
 
@@ -39,9 +40,12 @@ import sys, os
 import Image
 import pyfits as pf
 import numpy as np
+import scipy.ndimage as snd
 import ImageTk
 import Tkinter as Tk
 import tkFileDialog, tkMessageBox
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 
 # Project Dependencies
 import util
@@ -61,26 +65,55 @@ class FITSImageViewer:
         """ This is a helped function that provides the file browser dialog """
         self.filename.set(tkFileDialog.askopenfilename(title="Open FITS file..."))
         self.filenameBasename.set(os.path.basename(self.filename.get()))
+        self.submit.focus_set()
+        
+        """
+        imageHDUs = []
+        try:
+            hdulist = pf.open(self.filename)
+            for ii,hdu in enumerate(hdulist):
+                try:
+                    if not (hdu.header['XTENSION'] == 'BINTABLE'):
+                        imageHDUs.append(ii)
+                    else:
+                        print "not an image"
+                except:
+                    pass
+                        
+        except:
+            return
+        
+        m = self.hduOption.children['menu']
+        m.delete(0, Tk.END)
+        for val in imageHDUs:
+            m.add_command(label="{0}".format(val), command=lambda v=self.hduValue,l=val: v.set(l))
+        self.hduValue.set(imageHDUs[0])
+        """
     
     def start(self):
         """ """
         self.master.title("FITS Image Viewer / Editor")
         
-        headerLabel = "Select a FITS file to open"
-        Tk.Label(self.master, text=headerLabel).grid(row=0, column=1, sticky=Tk.W)
+        Tk.Label(self.master, text="Select a FITS file to open").grid(row=0, column=0, columnspan=3)
         
-        Tk.Label(self.master, text="File: ").grid(row=1)
+        Tk.Label(self.master, text="File: ").grid(row=1, column=0)
         self.filename = Tk.StringVar()
         self.filenameBasename = Tk.StringVar()
         filePathTextBox = Tk.Entry(self.master, width=35, textvariable=self.filenameBasename)
-        filePathTextBox.focus_set()
         filePathTextBox.grid(row=1, column=1)
-        
         openFile = Tk.Button(self.master, text="Browse...", command=self.browseFiles)
         openFile.grid(row=1, column=2)
         
+        Tk.Label(self.master, text="HDU: ").grid(row=2, column=0)
+        self.hduValue = Tk.IntVar(None)
+        #self.hduOption = Tk.OptionMenu(self.master, self.hduValue, 0)
+        #self.hduOption.grid(row=2, column=1)
+        hduBox = Tk.Entry(self.master, width=6, textvariable=self.hduValue)
+        hduBox.grid(row=2, column=1, columnspan=2, sticky="W")
+
         self.submit = Tk.Button(self.master, text="Show file", command=self.createSession)
-        self.submit.grid(row=2, column=0, columnspan=3)
+        self.submit.bind("<Return>", self.createSession)
+        self.submit.grid(row=3, column=1, columnspan=2)
         
         """
         for ii, filename in enumerate(self.imageSessions.keys()):
@@ -92,15 +125,18 @@ class FITSImageViewer:
         """
         
         # Bottom padding
-        Tk.Label(self.master, text="").grid(row=2)
+        #Tk.Label(self.master, text="").grid(row=2)
     
-    def createSession(self):
+    def createSession(self, event=None):
         """ """
         strFilename = self.filename.get()
+        hduNumber = self.hduValue.get()
         try:
-            self.imageSessions[strFilename] = ImageSession(self.master, strFilename)
+            self.imageSessions[strFilename] = ImageSession(self.master, strFilename, hdu=hduNumber)
             self.start()
         except util.ImageSessionError:
+            pass
+        except util.NotAnImageHDUError:
             pass
     
     def destroySession(self, filename):
@@ -110,9 +146,10 @@ class FITSImageViewer:
         self.master.update()
 
 class ImageSession:
-    def __init__(self, master, filename):
+    def __init__(self, master, filename, hdu=0):
         # filename should be a string!
         self.filename = filename
+        self.hdu = hdu
         
         # The master window?
         self.master = master
@@ -121,11 +158,23 @@ class ImageSession:
             tkMessageBox.showerror("File not found", "File {0} doesn't exist!".format(file))
             return
         
-        # Try to open the file and read in the data from HDU0
-        # TODO: Future versions should allow selecting the HDU?
+        self.openFile()
+        self.createWindow()
+    
+    def openFile(self):
+        # Try to open the file and read in the data from HDU
         try:
             hdulist = pf.open(self.filename)
-            self.rawData = hdulist[0].data
+            try:
+                if hdulist[self.hdu].header['XTENSION'] == 'BINTABLE':
+                    tkMessageBox.showerror("HDU Error", "The HDU {0} is not an ImageHDU!".format(self.hdu))
+                    raise util.NotAnImageHDUError("The HDU {0} is not an ImageHDU!".format(self.hdu))
+                # HDU is a table -- throw an error!
+            except KeyError:
+                # HDU is an image, carry on!
+                pass
+            
+            self.rawData = hdulist[self.hdu].data
             self.rawData.shape
         except IOError:
             tkMessageBox.showerror("FITS file error ", "File {0} does not appear to be a valid FITS file!".format(self.filename))
@@ -133,9 +182,7 @@ class ImageSession:
         except AttributeError:
             tkMessageBox.showerror("FITS file error ", "File {0} does not appear to have data in HDU 0.".format(self.filename))
             raise util.ImageSessionError("File {0} does not appear to have data in HDU 0.".format(self.filename))
-        
-        self.createWindow()
-        
+    
     def createWindow(self):
         # Create the actual window to draw the image and scale controls
         self.ImageWindow = Tk.Toplevel(self.master)
@@ -209,28 +256,83 @@ class ImageSession:
     
     def updateThumbnail(self, event):
         """ """
-        self.pilThumbnail = self.pilImage.transform(self.pilImage.size, Image.EXTENT, (event.x-29,event.y-29,event.x+21,event.y+21))
+        self.lastMousePosition = (event.x, event.y)
+        self.pilThumbnail = self.pilImage.transform(self.pilImage.size, Image.EXTENT, (event.x-25,event.y-25,event.x+25,event.y+25))
         self.thumbnailImage = ImageTk.PhotoImage(self.pilThumbnail.resize((200,200)))
         self.thumbnailImageLabel.configure(image=self.thumbnailImage)
         
     def scaleImage(self):
         """ This method re-scales the image data """
-        #self.scaledData = 255.0*self.rescaler(self.rawData, beta=10.**1, clip=True)
         self.scaledData = 255.0*self.rescaler(self.rawData, beta=10.**self.scaleValue.get(), min=self.minValue.get(), max=self.maxValue.get(), clip=True)
     
+    def plotContour(self, event):
+        """ If the 'c' key is pressed, generate a contour plot of whatever is in the thumbnail zoom box """
+        self.contourPlot = Tk.Toplevel(self.master)
+        self.contourPlot.title("Contour plot for: {0}".format(self.filename))
+        
+        rawShape = self.rawData.shape
+        
+        lastx, lasty = self.lastMousePosition
+        lastx = round(lastx/self.zoomFactor)
+        lasty = round(lasty/self.zoomFactor)
+        boxHalfSize = 25/self.zoomFactor
+        x1,y1,x2,y2 = [x for x in map(round, (lastx-boxHalfSize,lasty-boxHalfSize,lastx+boxHalfSize,lasty+boxHalfSize))]
+        
+        if x1 < 0:
+            x1 = 0
+            x2 = boxHalfSize*2
+        if x2 > rawShape[1]:
+            x2 = rawShape[1]
+            x1 = x2 - boxHalfSize*2
+        if y1 < 0:
+            y1 = 0
+            y2 = boxHalfSize*2
+        if y2 > rawShape[0]:
+            y2 = rawShape[0]
+            y1 = y2 - boxHalfSize*2
+        
+        thumbData = self.rawData[y1:y2, x1:x2]
+        shp = thumbData.shape
+        x,y = np.meshgrid(range(shp[0]), range(shp[1]))
+
+        self.fig = Figure(figsize=(5,5))
+        ax = self.fig.add_subplot(111)
+        ax.contour(x, y, thumbData)
+        ax.set_ylim(ax.get_ylim()[::-1])
+        ax.get_xaxis().set_ticks([])
+        ax.get_yaxis().set_ticks([])
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.contourPlot)
+        self.canvas.get_tk_widget().pack(side='top', fill='both', expand=1)
+        
     def drawImage(self):
         """ This method will draw the image into a PhotoImage object in the new image window """
-
+        
         self.pilImage = Image.fromarray(self.scaledData.astype(np.uint8))
-        self.pilImage = self.pilImage.resize((int(self.pilImage.size[0]*self.zoomFactor), int(self.pilImage.size[1]*self.zoomFactor)))
+        newSize = (int(self.pilImage.size[0]*self.zoomFactor), int(self.pilImage.size[1]*self.zoomFactor))
+        self.pilImage = self.pilImage.resize(newSize)
         self.tkImage = ImageTk.PhotoImage(self.pilImage)
-        self.tkImageLabel = Tk.Label(self.ImageWindow, image=self.tkImage, command=None, bg="red")
-        self.tkImageLabel.grid(row=0, column=2, rowspan=5, sticky="nswe")
-        #self.tkImageLabel.bind("<ButtonRelease-1>", self.toggleContour)
-        self.tkImageLabel.bind("<Motion>", self.updateThumbnail)
+        self.canvas = Tk.Canvas(self.ImageWindow, width=newSize[0], height=newSize[1], bd=0)
+        self.canvas.create_image(0, 0, image=self.tkImage, anchor="nw")
+        self.canvas.grid(row=0, column=2, rowspan=5, sticky="nswe")
+        self.canvas.bind("<Motion>", self.updateThumbnail)
+        self.canvas.bind("c", self.plotContour)
+        self.canvas.focus_set()
+        
+        """ # Code for source detection:
+        numSigma = 2.
+        labels, num = snd.label(self.rawData > (numSigma*np.std(self.rawData)), np.ones((3,3)))
+        coords = snd.center_of_mass(self.rawData, labels, range(1,num+1))
+        rad = 5.
+        for coord in coords:
+            y,x = coord
+            x = x*self.zoomFactor
+            y = y*self.zoomFactor
+            circ1 = self.canvas.create_oval(x-rad,y-rad,x+rad,y+rad, outline='red')
+        """
         
         self.pilThumbnail = self.pilImage.transform(self.pilImage.size, Image.EXTENT, (0,0,50,50))
-        self.thumbnailImage = ImageTk.PhotoImage(self.pilThumbnail.resize((200,200)))
+        self.pilThumbnail = self.pilThumbnail.resize((200,200))
+        self.thumbnailImage = ImageTk.PhotoImage(self.pilThumbnail)
         self.thumbnailImageLabel = Tk.Label(self.ImageWindow, image=self.thumbnailImage, command=None)
         self.thumbnailImageLabel.grid(row=4, column=0, columnspan=2, rowspan=5)
 

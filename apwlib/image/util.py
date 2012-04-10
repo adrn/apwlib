@@ -154,8 +154,111 @@ def sqrtStretch(data, beta=1.0, min=None, max=None, clip=False, **kwargs):
     else:
         return scaledData
 
+def fitsToBands(imPath, rggb=False, bayer=True):
+    """ 
+    This function takes a path to a FITS file as an input, and decomposes 
+    the image into separate bands. This function assumes the image is in
+    the Primary HDU (HDU 0) of the specified file, and makes some 
+    assumptions about what to return depending on the number of axes in 
+    the image. If NAXIS=1, the 1D array is simply returned. If NAXIS=2, 
+    it by default assumes a Bayer pattern, but this can be controlled by
+    the 'bayer' parameter (True or False). If Bayer is False, the full 2D
+    array is returned. If 'bayer' is True, and 'rggb' is False (default), 
+    the function combines G1 and G2. If 'rggb' is True, G1 and G2 are 
+    returned separately. If NAXIS=3, return a 2D array for each element in
+    NAXIS3. If NAXIS > 3, an error is thrown. 
+
+    Parameters
+    ----------
+    imPath : string
+        A string representing a path to a FITS file.
+    rggb : Boolean
+        If NAXIS=2 and the image is stored in a Bayer pattern, this 
+        parameter controls whether G1 and G2 are averaged or not.
+    bayer : Boolean
+        If NAXIS=2, this parameter controls whether the full array is
+        returned, or if it is decomposed into individual bands.
+
+    Examples
+    --------
+    >>> 
+
+    """
+    
+    if not os.path.exists(imPath): raise IOError("Image: %s not found! Is the path correct? \n\n" % imPath)
+    
+    im = pf.open(imPath)
+    naxis = im[0].header['NAXIS']
+    imData = im[0].data
+    im.close()
+    
+    if naxis == 1:
+        return imData.astype(float)
+        
+    elif naxis == 2:
+        if bayer:
+            # The image is saved in a Bayer pattern
+            R = imData[::2,::2].astype(float)
+            G1 = imData[1::2,::2].astype(float)
+            G2 = imData[::2,1::2].astype(float)
+            B = imData[1::2,1::2].astype(float)
+            
+            # Sometimes CCD's don't have an even number of pixels (WTF??),
+            #   e.g. the (old?) Nikon D40 X. This corrects for any shape
+            #   mismatching by throwing out a row or column so that all 
+            #   of the bands have the same shape
+            if (R.shape[0] % 2) != 0: R = R[:-1,:]
+            if (R.shape[1] % 2) != 0: R = R[:,:-1]
+            
+            if (G1.shape[0] % 2) != 0: G1 = G1[:-1,:]
+            if (G1.shape[1] % 2) != 0: G1 = G1[:,:-1]
+            
+            if (G2.shape[0] % 2) != 0: G2 = G2[:-1,:]
+            if (G2.shape[1] % 2) != 0: G2 = G2[:,:-1]
+                
+            if (B.shape[0] % 2) != 0: B = B[:-1,:]
+            if (B.shape[1] % 2) != 0: B = B[:,:-1]
+            
+            if rggb:
+                return (R, G1, G2, B)
+            else:
+                G = (G1 + G2) / 2.0
+                return np.array([R, G, B])
+        else:
+            # The image is grayscale
+            return imData.astype(float)
+            
+    elif naxis == 3:
+        # NAXIS3 appears as the **first** index in the returned data
+        return np.array([oneBand.astype(float) for oneBand in imData])
+
+def splitNEF(filename):
+    """ Assuming `filename` is a FITS file produces by running rawtofits on a NEF file,
+        (Nikon raw file), this script splits the FITS file into 3 separate -- one for 
+        each band.
+    """
+    filebase = os.path.splitext(os.path.splitext(filename)[0])[0]
+    
+    r,g,b = fitsToBands(filename, bayer=True)
+    
+    rFile = pf.PrimaryHDU(r)
+    rFile.writeto("{0}_R.fits".format(filebase))
+    
+    gFile = pf.PrimaryHDU(g)
+    gFile.writeto("{0}_G.fits".format(filebase))
+    
+    bFile = pf.PrimaryHDU(b)
+    bFile.writeto("{0}_B.fits".format(filebase))
+
 class ImageSessionError(IOError):
     """ raise ImageSessionError(hour) """
+    def __init__(self, string):
+        self.string = string
+    def __str__(self):
+        return self.string
+
+class NotAnImageHDUError(ValueError):
+    """ raise NotAnImageHDUError(hour) """
     def __init__(self, string):
         self.string = string
     def __str__(self):
