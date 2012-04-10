@@ -30,6 +30,7 @@ TODO:
     - any function that takes RA and Dec should accept a string of the form HH:MM:SS.SS
     - define __all__ so importing all from this script doesn't carry all of 'math'
     - unit tests for all functions
+    - TODO: conversion functions should accept arrays of numbers!!
 """
 
 __author__ = 'Adrian Price-Whelan <adrn@astro.columbia.edu>'
@@ -200,7 +201,7 @@ def hoursToString(h, precision=5, pad=False, sep=("h", "m", "s")):
     else:
         hPad = ""
         
-    if len(sep) == 1:
+    if len(sep) == 1 or len(sep) == 0:
         literal = "{0[0]" + hPad + "}"+ str(sep) + "{0[1]:02d}" + str(sep) + "{0[2]:0" + str(precision+3) + "." + str(precision) + "f}"
     elif len(sep) == 2:
         literal = "{0[0]" + hPad + "}"+ str(sep[0]) + "{0[1]:02d}" + str(sep[1]) + "{0[2]:0" + str(precision+3) + "." + str(precision) + "f}"
@@ -336,7 +337,7 @@ def degreesToString(d, precision=5, pad=False, sep=":"):
     else:
         dPad = ""
         
-    if len(sep) == 1:
+    if len(sep) == 1 or len(sep) == 0:
         literal = "{0[0]" + dPad + "}" + str(sep) + "{0[1]:02d}" + str(sep) + "{0[2]:0" + str(precision+3) + "." + str(precision) + "f}"
     elif len(sep) == 2:
         literal = "{0[0]" + dPad + "}"+ str(sep[0]) + "{0[1]:02d}" + str(sep[1]) + "{0[2]:0" + str(precision+3) + "." + str(precision) + "f}"
@@ -408,16 +409,15 @@ def parseRADecString(radec, ra_units="hours", dec_units="degrees"):
     
     """
     
-    div = '[:|/|\t|\-|\sdms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+    div = '[:/\t\shdms°\'\"]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
     ra_pattr = '^[J]{0,1}([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div
     dec_pattr = '([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
     pattr = ra_pattr + "[\s|_]*" + dec_pattr
-    
     try:
         elems = re.search(pattr, radec).groups()
     except:
         raise ValueError("parseRADecString: Invalid input string! ('{0}')".format(radec))
-    
+
     ra = g.RA(hmsToHours(*map(float,elems[:3])), units=ra_units)
     dec = g.Dec(dmsToDegrees(*map(float,elems[3:])), units=dec_units)
     
@@ -778,7 +778,111 @@ def gmstToDatetime(datetimeObj, timezone=None):
         tz = timezone
     return astrodatetime(year=datetimeObj.year, month=datetimeObj.month, day=datetimeObj.day, hour=h, minute=m, second=int(s), microsecond=int(ms), tzinfo=gmt).astimezone(tz)
 
+def sphericalAnglesToCartesian(a, b, units="radians"):
+    """ Converts two angles on the surface of a (unit) sphere into Cartesian 
+        coordinates
+        
+        This can be used as an intermediary step with RA,Dec to use a rotation
+        matrix to convert to Galactic, for instance.
+        
+        Parameters
+        ----------
+        a : `Angle`, `numpy.array`
+        b : `Angle`, `numpy.array`
+        units : str, {'radians', 'degrees', 'hours'}
+        
+        Notes
+        -----
+        If an Array, the data can either be an array of Angle objects or an array
+        of RADIAN values.
+        
+    """
+    
+    if isinstance(a, list) or isinstance(b, list):
+        a = np.array(a)
+        b = np.array(b)
+    
+    if isinstance(a, np.ndarray):
+        if not isinstance(a[0], g.Angle) or not isinstance(b[0], g.Angle):
+            a = np.array([g.Angle(x, units=units) for x in a])
+            b = np.array([g.Angle(x, units=units) for x in b])
+            
+        ar = np.array([x.radians for x in a])
+        br = np.array([x.radians for x in b])
+        #resultVector = np.zeros((3,len(ar)), dtype=float)
+    else:
+        if not isinstance(a, g.Angle) or not isinstance(b, g.Angle):
+            a = g.Angle(a, units=units)
+            b = g.Angle(b, units=units)
+            
+        ar = a.radians
+        br = b.radians
+        #resultVector = np.zeros(3, dtype=float)
+    
+    #resultVector[0] = np.cos(ar) * np.cos(br)
+    #resultVector[1] = np.sin(ar) * np.cos(br)
+    #resultVector[2] = np.sin(br)
+    
+    resultVector = []
+    resultVector.append(np.cos(ar) * np.cos(br))
+    resultVector.append(np.sin(ar) * np.cos(br))
+    resultVector.append(np.sin(br))
+    
+    return tuple(resultVector)
 
+def cartesianToSphericalAngles(x, y, z):
+    """ Converts Cartesian coordinates into two angles on the surface of a 
+        (unit) sphere
+        
+        This can be used as an intermediary step with RA,Dec to use a rotation
+        matrix to convert to Galactic, for instance.
+        
+        Parameters
+        ----------
+        x : float, `numpy.array`
+        y : float, `numpy.array`
+        z : float, `numpy.array`
+        
+        Returns an array of Angle objects
+        
+    """
+    """
+    double x, y, z, r;
+ 
+    x = v[0];
+    y = v[1];
+    z = v[2];
+    r = sqrt ( x * x + y * y );
+ 
+    *a = ( r != 0.0 ) ? atan2 ( y, x ) : 0.0;
+    *b = ( z != 0.0 ) ? atan2 ( z, r ) : 0.0;
+    """
+    
+    r = np.sqrt(x**2 + y**2)
+    a = np.arctan2(y, x)
+    b = np.arctan2(z, r)
+    
+    return (g.Angle.fromRadians(a), g.Angle.fromRadians(b))
+
+def j2000ToGalactic(ra, dec):
+    """ Takes an ra,dec and converts it to Galactic coordinates
+        
+        ra must be an RA object or an Angle object, and dec must
+        be a Dec object or an Angle object
+        
+        Parameters
+        ----------
+        ra : `RA`, `Angle`
+        dec : `Dec`, `Angle`
+        
+    """
+    xyz = np.array(sphericalAnglesToCartesian(ra, dec))
+    rotMatrix = np.array([[-0.054875539, 0.494109454, -0.867666136],\
+                          [-0.873437105, -0.444829594, -0.198076390],\
+                          [-0.483834992, 0.746982249, 0.455983795]])
+    
+    newxyz = np.dot(xyz, rotMatrix)
+    return cartesianToSphericalAngles(*newxyz)
 
 # =====================================
 # ANYTHING BELOW HERE CAN'T BE TRUSTED!
@@ -1316,6 +1420,34 @@ if __name__ == '__main__':
     import unittest
     import sys
     
+    a = g.Angle.fromDegrees(13.6146134)
+    b = g.Angle.fromDegrees(63.1351344)
+    
+    print sphericalAnglesToCartesian(a, b)
+    
+    a = np.random.random(100)*180.
+    b = np.random.random(100)*180.
+    
+    print sphericalAnglesToCartesian(a, b)
+    
+    a = np.array([g.Angle.fromDegrees(x) for x in np.random.random(100)*180.])
+    b = np.array([g.Angle.fromDegrees(x) for x in np.random.random(100)*180.])
+    
+    print sphericalAnglesToCartesian(a, b)
+    
+    sys.exit(0)
+    
+    class TestCoordinateConversions(unittest.TestCase):
+        def test_sphericalToCartesian(self):
+            a = g.Angle.fromDegrees(13.6146134)
+            b = g.Angle.fromDegrees(63.1351344)
+            
+            sphericalAnglesToCartesian(a, b)
+    
+    unittest.main()
+    print "Test ran successfully!"
+    sys.exit(0)
+    
     class TestParseFunctions(unittest.TestCase):
         def test_parseHours(self):
             # "11:30:36.135789" = 11.010037719166666
@@ -1473,6 +1605,6 @@ if __name__ == '__main__':
                 if (d+m+s) > 1.5: pm = "+"
                 else: pm = "-"
                 self.assertEqual(parseDec("%s%d:%02d:%05.2f" % (pm, int(d*90.),int(m*59.3),s*59.3)), parseDec("%s%d %02d %05.2f" % (pm, int(d*90.),int(m*59.3),s*59.3)))
-                self.assertEqual(parseDec("%s%02d:%02d:%05.2f" % (pm, int(d*90.),int(m*59.3),s*59.3)), parseDec("%s%d%02d%05.2f" % (pm, int(d*90.),int(m*59.3),s*59.3)))
+                self.assertEqual(parseDec("%s%02d:%02d:%05.2f" % (pm, int(d*90.),int(m*59.3),s*59.3)), parseDec("%s%d%02d%05.2f" % (pm, int(d*90.),int(m*59.3),s*59.3)))            
     
     unittest.main()

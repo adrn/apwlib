@@ -94,6 +94,11 @@ class Angle(object):
     def fromRadians(cls, val):
         """ Create an `Angle` object with input units of Radians """
         return cls(val, units="radians")
+    
+    @classmethod
+    def fromAngle(cls, angle):
+        """ Creates an `Angle` object from an `Angle` object """
+        return cls(angle.radians, units="radians")
         
     @classmethod
     def fromDatetime(cls, dt):
@@ -313,6 +318,16 @@ class RA(Angle):
             ha = Angle(ha, units)
             
         return Angle(ha.radians + self.radians, units="radians")
+    
+    def string(self, **kwargs):
+        """ Re-implements the default Angle.string() method to ensure
+            default units of hours
+        """
+        
+        if not kwargs.has_key("units"):
+            kwargs["units"] = "hours"
+        
+        return super(RA, self).string(**kwargs)
 
 class Dec(Angle):
     """ Represents a J2000 Declination """
@@ -337,6 +352,16 @@ class Dec(Angle):
             units = "degrees"
         
         super(Dec, self).__init__(angle, units)
+    
+    def string(self, **kwargs):
+        """ Re-implements the default Angle.string() method to ensure
+            default units of degrees
+        """
+        
+        if not kwargs.has_key("units"):
+            kwargs["units"] = "degrees"
+        
+        return super(Dec, self).string(**kwargs)
 
 class RADec(object):
     """ Represents a J200 Equatorial coordinate system. """
@@ -364,17 +389,30 @@ class RADec(object):
         """ """
         return "<RA: {0} (degrees) | Dec: {1} (degrees)>".format(self.ra.string(sep=":"), self.dec.string(sep=":", units="degrees"))
     
-    def string(self):
-        # TODO: Write this function!
-        raise NotImplementedError("This function has not been implemented yet.")
-        return "{0},{1}".format(self.ra.degrees, self.dec.degrees)
+    def string(self, radec_sep=",", ra_units="hours", dec_units="degrees", **kwargs):
+        """ """
+        if not kwargs.has_key("decimal"):
+            kwargs["decimal"] = True
+        
+        return "{0}{2}{1}".format(self.ra.string(units=ra_units, **kwargs), self.dec.string(units=dec_units, **kwargs), radec_sep)
+    
+    def Jstring(self):
+        """ Returns a string formatted in the J2000 IAU standard:
+            JHHMMSS.ss+DDMMSS.s
+        """
+        if self.dec.degrees > 0: dec_sep = "+"
+        else: dec_sep = ""
+         
+        return "J{0}{2}{1}".format(self.ra.string(sep="", precision=2), self.dec.string(sep="", precision=1), dec_sep)
+         
     
     def subtends(self, other):
-        """ Calculate the angle subtended by 2 coordinates on a sphere
+        """ Calculate the angle subtended between 2 sets of coordinates on a sphere
     
             Parameters
             ----------
             other : RADec
+                The other set of coordinates.
             
         """
         if not isinstance(other, RADec):
@@ -385,9 +423,13 @@ class RADec(object):
         angle = Angle.fromRadians(ang)
         return angle
     
-    def convertTo(self):
+    def convertTo(self, new_coordinates_class):
         raise NotImplementedError("This function has not been implemented yet.")
-
+    
+    def galactic(self):
+        """ Convert the RA and Dec to Galactic latitude and longitude """
+        return convert.j2000ToGalactic(self.ra, self.dec)
+    
 
 ''' This is all experimental 
 class Coordinate(object):
