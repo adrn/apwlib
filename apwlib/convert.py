@@ -37,7 +37,9 @@ __author__ = 'Adrian Price-Whelan <adrn@astro.columbia.edu>'
 # Standard library dependencies
 import math
 import re
+import os.path
 import calendar
+from inspect import stack
 import datetime as py_datetime
 
 # Third-party libraries
@@ -85,7 +87,7 @@ def checkHMSRanges(h, m, s):
 def parseHours(hours, outputHMS=False):
     """ Parses an input "hour" value to decimal hours or an hour, minute, second tuple.
         
-        Convert hours given in any parseable format (float, string, or Angle) into 
+        Convert hours given in any parseable format (float, string, tuple, list, or Angle) into 
         hour, minute, and seconds components or decimal hours.
         
         Parameters
@@ -136,8 +138,30 @@ def parseHours(hours, outputHMS=False):
         parsedHMS = hoursToHMS(parsedHours)
         
     elif isinstance(x, tuple):
-        parsedHours = hmsToHours(*x)
-        parsedHMS = x
+        if len(x) == 3:
+            parsedHours = hmsToHours(*x)
+            parsedHMS = x
+        else:
+            raise ValueError("{0}.{1}: Incorrect number of values given, expected (h,m,s), got: {2}".format(os.path.basename(__file__), stack()[0][3], x))
+
+    elif isinstance(x, list):
+        if len(x) == 3:
+            try:
+                h = float(x[0])
+                m = float(x[1])
+                s = float(x[2])
+            except ValueError:
+                raise ValueError("{0}.{1}: Array values ([h,m,s] expected) could not be coerced into floats. {2}".format(os.path.basename(__file__), stack()[0][3], x))
+
+            parsedHours = hmsToHours(h, m, s)
+            parsedHMS = (h, m, s)
+            if outputHMS:
+                return (h, m, s)
+            else:
+                return hmsToHours(h, m, s)
+
+        else:
+            raise ValueError("{0}.{1}: Array given must contain exactly three elements ([h,m,s]), provided: {2}".format(os.path.basename(__file__), stack()[0][3], x)) # current filename/method should be made into a convenience method
     
     else:
         raise ValueError("parseHours: could not parse value of type {0}.".format(type(x).__name__))
