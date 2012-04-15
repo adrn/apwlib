@@ -117,17 +117,37 @@ def parseHours(hours, outputHMS=False):
             parsedHours = float(x)
             parsedHMS = hoursToHMS(parsedHours)
         except ValueError:
-        
-            div = '[:|/|\t|\-|\shms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+
+            string_parsed = False
+            div = '[:|/|\t|\-|\shms]{1,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+            
+            # First look for a pattern where h,m,s is specified
             pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
 
             try:
                 elems = re.search(pattr, x).groups()
+                string_parsed = True
             except:
-                raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(x))
+                pass # try again below
+                #raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(x))
             
-            parsedHours = hmsToHours(elems[0], elems[1], elems[2])
-            parsedHMS = (int(elems[0]), int(elems[1]), float(elems[2]))
+            if string_parsed:
+                parsedHours = hmsToHours(elems[0], elems[1], elems[2])
+                parsedHMS = (int(elems[0]), int(elems[1]), float(elems[2]))
+            
+            else:
+                
+                # look for a pattern where only d,m is specified
+                pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})$'
+                
+                try:
+                	elems = re.search(pattr, x).groups()
+                	string_parsed = True
+                except:
+                    raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(x))
+
+                parsedHours = hmsToHours(elems[0], elems[1], 0.)
+                parsedHMS = (int(elems[0]), int(elems[1]), 0.)
 
     elif isinstance(x, g.Angle):
         parsedHours = x.hours
@@ -273,17 +293,38 @@ def parseDegrees(degrees, outputDMS=False):
             parsedDegrees = float(x)
             parsedDMS = degreesToDMS(parsedDegrees)
         except ValueError:
-            div = '[:|/|\t|\-|\sdms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+        
+            string_parsed = False
+            div = '[:|/|\t|\-|\sdms]{1,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+
+            # First look for a pattern where d,m,s is specified
             pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
     
             try:
                 elems = re.search(pattr, x).groups()
+                string_parsed = True
             except:
-                raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
+                pass # try again below
+                #raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
             
-            parsedDMS = (int(elems[0]), int(elems[1]), float(elems[2]))
-            parsedDegrees = dmsToDegrees(int(elems[0]), int(elems[1]), float(elems[2]))
-    
+            if string_parsed:
+                parsedDMS = (int(elems[0]), int(elems[1]), float(elems[2]))
+                parsedDegrees = dmsToDegrees(int(elems[0]), int(elems[1]), float(elems[2]))
+
+            else:
+
+				# look for a pattern where only d,m is specified
+				pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})$'
+				
+				try:
+					elems = re.search(pattr, x).groups()
+					string_parsed = True
+				except:
+					raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
+	
+				parsedDMS = (int(elems[0]), int(elems[1]), 0.0)
+				parsedDegrees = dmsToDegrees(int(elems[0]), int(elems[1]), 0.0)
+
     elif isinstance(x, g.Angle):
         parsedDegrees = x.degrees
         parsedDMS = degreesToDMS(parsedDegrees)
