@@ -119,10 +119,10 @@ def parseHours(hours, outputHMS=False):
         except ValueError:
 
             string_parsed = False
-            div = '[:|/|\t|\-|\shms]{1,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+            div = '[:|/|\t|\-|\sHhMmSs]{1,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
             
             # First look for a pattern where h,m,s is specified
-            pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
+            pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + '[Ss]{0,1}' + '$'
 
             try:
                 elems = re.search(pattr, x).groups()
@@ -138,7 +138,7 @@ def parseHours(hours, outputHMS=False):
             else:
                 
                 # look for a pattern where only d,m is specified
-                pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})$'
+                pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + '[Mm]{0,1}' + '$'
                 
                 try:
                 	elems = re.search(pattr, x).groups()
@@ -295,10 +295,10 @@ def parseDegrees(degrees, outputDMS=False):
         except ValueError:
         
             string_parsed = False
-            div = '[:|/|\t|\-|\sdms]{1,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+            div = '[:|/|\t|\-|\sDdMmSs]{1,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
 
             # First look for a pattern where d,m,s is specified
-            pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
+            pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + '[Ss]{0,1}' + '$'
     
             try:
                 elems = re.search(pattr, x).groups()
@@ -314,7 +314,7 @@ def parseDegrees(degrees, outputDMS=False):
             else:
 
 				# look for a pattern where only d,m is specified
-				pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})$'
+				pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + '[Mm]{0,1}' + '$'
 				
 				try:
 					elems = re.search(pattr, x).groups()
