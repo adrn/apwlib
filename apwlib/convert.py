@@ -728,21 +728,22 @@ def datetimeToGMST(datetimeObj, timezone=None):
     
     jd = datetimeToJD(datetimeObj, timezone=timezone)
     
-    S = jd - 2451545.0
-    T = S / 36525.0
-    T0 = 6.697374558 + (2400.051336 * T) + (0.000025862 * T**2)
-    T0 = T0 % 24
+    # algorithm described on USNO web site http://aa.usno.navy.mil/faq/docs/GAST.php
+    jd0 = np.round(jd-.5)+.5
+    h = (jd - jd0) * 24.0
+    d = jd - 2451545.0
+    d0 = jd0 - 2451545.0
+    t = d/36525
     
-    UT = datetimeToDecimalTime(datetimeObj.time()) * 1.002737909
-    T0 += UT
+    #mean sidereal time @ greenwich
+    gmst = 6.697374558 + 0.06570982441908*d0 + 0.000026*t**2 + 1.00273790935*h
+    #- 1.72e-9*t**3 #left off as precision to t^3 is unneeded
     
-    GST = T0 % 24
-
-    h,m,s = hoursToHMS(GST)
-    sf, s = math.modf(s)
-    ms = sf*1.E6
-    
-    return astrodatetime(year=datetimeObj.year, month=datetimeObj.month, day=datetimeObj.day, hour=h, minute=m, second=int(s), microsecond=int(ms))
+    eps =  np.radians(23.4393 - 0.0000004*d) #obliquity
+    L = np.radians(280.47 + 0.98565*d) #mean longitude of the sun
+    omega = np.radians(125.04 - 0.052954*d) #longitude of ascending node of moon
+    dpsi = -0.000319*np.sin(omega) - 0.000024*np.sin(2*L) #nutation longitude
+    return (gmst + dpsi*np.cos(eps)) % 24.0
 
 def gmstToDatetime(datetimeObj, timezone=None):
     """ Converts a datetime object representing a Greenwich Mean Sidereal Time 
