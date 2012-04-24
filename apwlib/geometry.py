@@ -364,7 +364,7 @@ class Dec(Angle):
         return super(Dec, self).string(**kwargs)
 
 class RADec(object):
-    """ Represents a J200 Equatorial coordinate system. """
+    """ Represents a J2000 Equatorial coordinate system. """
     
     def __init__(self, radec, ra_units="hours", dec_units="degrees"):
         """ """
