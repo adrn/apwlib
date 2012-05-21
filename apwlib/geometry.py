@@ -407,8 +407,9 @@ class RADec(object):
          
     
     def subtends(self, other):
-        """ Calculate the angle subtended between 2 sets of coordinates on a sphere
-    
+        """ Calculate the angle subtended by two coordinates on a sphere using
+            Vincenty's formula.
+            
             Parameters
             ----------
             other : RADec
@@ -418,10 +419,25 @@ class RADec(object):
         if not isinstance(other, RADec):
             raise ValueError("You must pass another RADec object into this function to calculate the angle subtended.")
         
-        ang = math.acos(math.sin(self.dec.radians)*math.sin(other.dec.radians) + math.cos(self.dec.radians)*math.cos(other.dec.radians)*math.cos(self.ra.radians - other.ra.radians))
+        # This is the law of cosines, which suffers from rounding errors at small distances.
+        #loc_ang = math.acos(math.sin(self.dec.radians)*math.sin(other.dec.radians) + math.cos(self.dec.radians)*math.cos(other.dec.radians)*math.cos(self.ra.radians - other.ra.radians))
         
-        angle = Angle.fromRadians(ang)
-        return angle
+        # -------------------------------------------------------------------------------
+        # This implementation is Vincenty's formula. While obviously a little more
+        # computationally expensive than the formula above, it is more accurate at all scales.
+        # -------------------------------------------------------------------------------
+        from math import sqrt, cos, sin, atan2
+        
+        # abbreviate for readability and to avoid the multiple stack calls
+        (r1, d1) = (self.ra.radians, self.dec.radians)
+        (r2, d2) = (other.ra.radians, other.dec.radians)
+        dr = r1-r2
+        
+        X_nom = sqrt( (cos(d1)*sin(dr))**2 + (cos(d2)*sin(d1) - sin(d2)*cos(d1)*cos(dr))**2 )
+        X_denom = sin(d2)*sin(d1) + cos(d2)*cos(d1)*cos(dr)
+        ang = atan2(X_nom, X_denom)
+                
+        return Angle.fromRadians(ang)
     
     def convertTo(self, new_coordinates_class):
         raise NotImplementedError("This function has not been implemented yet.")

@@ -38,7 +38,9 @@ __author__ = 'Adrian Price-Whelan <adrn@astro.columbia.edu>'
 # Standard library dependencies
 import math
 import re
+import os.path
 import calendar
+from inspect import stack
 import datetime as py_datetime
 
 # Third-party libraries
@@ -86,7 +88,7 @@ def checkHMSRanges(h, m, s):
 def parseHours(hours, outputHMS=False):
     """ Parses an input "hour" value to decimal hours or an hour, minute, second tuple.
         
-        Convert hours given in any parseable format (float, string, or Angle) into 
+        Convert hours given in any parseable format (float, string, tuple, list, or Angle) into 
         hour, minute, and seconds components or decimal hours.
         
         Parameters
@@ -116,17 +118,37 @@ def parseHours(hours, outputHMS=False):
             parsedHours = float(x)
             parsedHMS = hoursToHMS(parsedHours)
         except ValueError:
-        
-            div = '[:|/|\t|\-|\shms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
-            pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
+
+            string_parsed = False
+            div = '[:|/|\t|\-|\sHhMmSs]{1,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+            
+            # First look for a pattern where h,m,s is specified
+            pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + '[Ss]{0,1}' + '$'
 
             try:
                 elems = re.search(pattr, x).groups()
+                string_parsed = True
             except:
-                raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(x))
+                pass # try again below
+                #raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(x))
             
-            parsedHours = hmsToHours(elems[0], elems[1], elems[2])
-            parsedHMS = (int(elems[0]), int(elems[1]), float(elems[2]))
+            if string_parsed:
+                parsedHours = hmsToHours(elems[0], elems[1], elems[2])
+                parsedHMS = (int(elems[0]), int(elems[1]), float(elems[2]))
+            
+            else:
+                
+                # look for a pattern where only d,m is specified
+                pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + '[Mm]{0,1}' + '$'
+                
+                try:
+                	elems = re.search(pattr, x).groups()
+                	string_parsed = True
+                except:
+                    raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(x))
+
+                parsedHours = hmsToHours(elems[0], elems[1], 0.)
+                parsedHMS = (int(elems[0]), int(elems[1]), 0.)
 
     elif isinstance(x, g.Angle):
         parsedHours = x.hours
@@ -137,11 +159,33 @@ def parseHours(hours, outputHMS=False):
         parsedHMS = hoursToHMS(parsedHours)
         
     elif isinstance(x, tuple):
-        parsedHours = hmsToHours(*x)
-        parsedHMS = x
+        if len(x) == 3:
+            parsedHours = hmsToHours(*x)
+            parsedHMS = x
+        else:
+            raise ValueError("{0}.{1}: Incorrect number of values given, expected (h,m,s), got: {2}".format(os.path.basename(__file__), stack()[0][3], x))
+
+    elif isinstance(x, list):
+        if len(x) == 3:
+            try:
+                h = float(x[0])
+                m = float(x[1])
+                s = float(x[2])
+            except ValueError:
+                raise ValueError("{0}.{1}: Array values ([h,m,s] expected) could not be coerced into floats. {2}".format(os.path.basename(__file__), stack()[0][3], x))
+
+            parsedHours = hmsToHours(h, m, s)
+            parsedHMS = (h, m, s)
+            if outputHMS:
+                return (h, m, s)
+            else:
+                return hmsToHours(h, m, s)
+
+        else:
+            raise ValueError("{0}.{1}: Array given must contain exactly three elements ([h,m,s]), provided: {2}".format(os.path.basename(__file__), stack()[0][3], x)) # current filename/method should be made into a convenience method
     
     else:
-        raise ValueError("parseHours: could not parse value of type {0}.".format(type(x.__name__)))
+        raise ValueError("parseHours: could not parse value of type {0}.".format(type(x).__name__))
     
     if outputHMS:
         return parsedHMS
@@ -250,17 +294,38 @@ def parseDegrees(degrees, outputDMS=False):
             parsedDegrees = float(x)
             parsedDMS = degreesToDMS(parsedDegrees)
         except ValueError:
-            div = '[:|/|\t|\-|\sdms]{0,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
-            pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + div + '$'
+        
+            string_parsed = False
+            div = '[:|/|\t|\-|\sDdMmSs]{1,2}' # accept these as (one or more repeated) delimiters: :, whitespace, /
+
+            # First look for a pattern where d,m,s is specified
+            pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + div + '(\d{1,2}[\.0-9]+)' + '[Ss]{0,1}' + '$'
     
             try:
                 elems = re.search(pattr, x).groups()
+                string_parsed = True
             except:
-                raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
+                pass # try again below
+                #raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
             
-            parsedDMS = (int(elems[0]), int(elems[1]), float(elems[2]))
-            parsedDegrees = dmsToDegrees(int(elems[0]), int(elems[1]), float(elems[2]))
-    
+            if string_parsed:
+                parsedDMS = (int(elems[0]), int(elems[1]), float(elems[2]))
+                parsedDegrees = dmsToDegrees(int(elems[0]), int(elems[1]), float(elems[2]))
+
+            else:
+
+				# look for a pattern where only d,m is specified
+				pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + '[Mm]{0,1}' + '$'
+				
+				try:
+					elems = re.search(pattr, x).groups()
+					string_parsed = True
+				except:
+					raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
+	
+				parsedDMS = (int(elems[0]), int(elems[1]), 0.0)
+				parsedDegrees = dmsToDegrees(int(elems[0]), int(elems[1]), 0.0)
+
     elif isinstance(x, g.Angle):
         parsedDegrees = x.degrees
         parsedDMS = degreesToDMS(parsedDegrees)
@@ -372,7 +437,7 @@ def parseRadians(radians):
         return x.radians
     
     else:
-        raise ValueError("convert.parseRadians: could not parse value of type {0}.".format(type(x.__name__)))
+        raise ValueError("convert.parseRadians: could not parse value of type {0}.".format(type(x).__name__))
 
 def radiansToDegrees(r):
     """ Convert an angle in Radians to Degrees """
