@@ -38,6 +38,9 @@ __all__ = ["Angle", "RA", "Dec", "RADec"]
 import math
 import copy
 
+# Third-party
+import numpy as np
+
 # Project Dependencies
 import convert
 import astrodatetime
@@ -522,6 +525,29 @@ def subtends(a1,b1,a2,b2,units="radians"):
         return math.degrees(math.acos(x1*x2+y1*y2+z1*z2))/15.
     else:
         raise IllegalUnitsError("units must be 'radians', 'degrees', or 'hours' -- you entered: {0}".format(units))
+
+def subtends_degrees(a1, b1, a2, b2):
+    """ Calculate the angle subtended by 2 angular positions on the surface of a sphere.
+        
+        Parameters
+        ----------
+        a1 : float, `Angle`
+        b1 : float, `Angle`
+        a2 : float, `Angle`
+        b2 : float, `Angle`
+    """
+    
+    r1 = np.radians(a1)
+    d1 = np.radians(b1)
+    r2 = np.radians(a2)
+    d2 = np.radians(b2)
+    dr = r1-r2
+    
+    X_nom = np.sqrt( (np.cos(d1)*np.sin(dr))**2 + (np.cos(d2)*np.sin(d1) - np.sin(d2)*np.cos(d1)*np.cos(dr))**2 )
+    X_denom = np.sin(d2)*np.sin(d1) + np.cos(d2)*np.cos(d1)*np.cos(dr)
+    ang = np.arctan2(X_nom, X_denom)
+            
+    return np.degrees(ang)
 
 if __name__ == "__main__":
     # self.assertEqual(sex2dec(11, 0, 0), 11.0)
