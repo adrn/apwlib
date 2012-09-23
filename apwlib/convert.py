@@ -139,16 +139,18 @@ def parseHours(hours, outputHMS=False):
             else:
                 
                 # look for a pattern where only d,m is specified
-                pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2})' + '[Mm]{0,1}' + '$'
+                pattr = '^([+-]{0,1}\d{1,2})' + div + '(\d{1,2}[\.0-9]*)' + '[Mm]{0,1}' + '$'
                 
                 try:
-                	elems = re.search(pattr, x).groups()
-                	string_parsed = True
+                    elems = re.search(pattr, x).groups()
+                    string_parsed = True
                 except:
                     raise ValueError("convert.parseHours: Invalid input string, can't parse to HMS. ({0})".format(x))
-
-                parsedHours = hmsToHours(elems[0], elems[1], 0.)
-                parsedHMS = (int(elems[0]), int(elems[1]), 0.)
+                
+                m = float(elems[1])
+                s = 60.0 * (int(m) - m)
+                parsedHours = hmsToHours(elems[0], int(m), s)
+                parsedHMS = (int(elems[0]), int(m), s)
 
     elif isinstance(x, g.Angle):
         parsedHours = x.hours
@@ -314,17 +316,19 @@ def parseDegrees(degrees, outputDMS=False):
 
             else:
 
-				# look for a pattern where only d,m is specified
-				pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2})' + '[Mm]{0,1}' + '$'
-				
-				try:
-					elems = re.search(pattr, x).groups()
-					string_parsed = True
-				except:
-					raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
-	
-				parsedDMS = (int(elems[0]), int(elems[1]), 0.0)
-				parsedDegrees = dmsToDegrees(int(elems[0]), int(elems[1]), 0.0)
+                # look for a pattern where only d,m is specified
+                pattr = '^([+-]{0,1}\d{1,3})' + div + '(\d{1,2}[\.0-9]*)' + '[Mm]{0,1}' + '$'
+
+                try:
+                    elems = re.search(pattr, x).groups()
+                    string_parsed = True
+                except:
+                    raise ValueError("convert.parseDegrees: Invalid input string! ('{0}')".format(x))
+                
+                m = float(elems[1])
+                s = 60.0 * (int(m) - m)
+                parsedDMS = (int(elems[0]), int(m), s)
+                parsedDegrees = dmsToDegrees(int(elems[0]), int(m), s)
 
     elif isinstance(x, g.Angle):
         parsedDegrees = x.degrees
@@ -500,19 +504,19 @@ def hmsToStringTime(h, m, s, precision=5, sep=":", pad=True):
         
         Parameters
         ----------
-    	hour : int, float
-    	min : int, float
-    	sec : int, float
-    	precision : int
-    	    This controls how many decimal places to display in Seconds.
-    	sep : str, tuple, list
-    	    This specifies what separator to place between the hour, 
+        hour : int, float
+        min : int, float
+        sec : int, float
+        precision : int
+            This controls how many decimal places to display in Seconds.
+        sep : str, tuple, list
+            This specifies what separator to place between the hour, 
             minute, and seconds. e.g. sep=':' means a string like "13:27:15.1412". You can also specify 
             a string, tuple, or list of length 2 or 3 to control each separator. For length 2, e.g.
             sep=':-', this means a string like "13:27-15.1412". For length 3, e.g. ("h","m","s"), this
             means a string like "13h27m15.1412s".
-    	pad : bool
-    	    Specify whether to pad value with spaces or zeros so values line up
+        pad : bool
+            Specify whether to pad value with spaces or zeros so values line up
     
     """
     if h >= 0:
@@ -528,18 +532,18 @@ def decimalToStringTime(decim, precision=5, sep=":", pad=True):
     
         Parameters
         ----------
-    	decim : int, float
-    	    The decimal time value to convert.
-    	precision : int
-    	    This controls how many decimal places to display in Seconds.
-    	sep : str, tuple, list
-    	    This specifies what separator to place between the hour, 
+        decim : int, float
+            The decimal time value to convert.
+        precision : int
+            This controls how many decimal places to display in Seconds.
+        sep : str, tuple, list
+            This specifies what separator to place between the hour, 
             minute, and seconds. e.g. sep=':' means a string like "13:27:15.1412". You can also specify 
             a string, tuple, or list of length 2 or 3 to control each separator. For length 2, e.g.
             sep=':-', this means a string like "13:27-15.1412". For length 3, e.g. ("h","m","s"), this
             means a string like "13h27m15.1412s".
-    	pad : bool
-    	    Specify whether to pad value with spaces or zeros so values line up
+        pad : bool
+            Specify whether to pad value with spaces or zeros so values line up
     
     """
 
@@ -1092,8 +1096,8 @@ def lstToGMST(longitude, hour, minute=None, second=None, longitudeDirection='W',
     
     Examples
     --------
-	- to do
-	    
+    - to do
+        
     """
     if minute != None and second != None:
         hours = hmsToHours(hour, minute, second)
@@ -1150,7 +1154,7 @@ def raLSTToHa(ra, hour, minute=None, second=None, raUnits='HOURS'):
     
     Examples
     --------
-	- to do
+    - to do
     
     """
     if minute != None and second != None:
